@@ -134,6 +134,13 @@ NODE
   fi
 }
 
+# 只把影响 dsh-workbench / dsh-superagent 的启动错误视为致命。
+# profile 里其他插件的 failed to import（如既有的 dsh-context-guard 缺包）是独立警告，
+# 不能因为一条泛化的 "failed to import" 就中止切换。
+fatal_log() {
+  grep -E 'skipping profile bundle "(dsh-workbench|dsh-superagent)"|requires a loopback Web server|Lock file is already being held|dsh-superagent failed to start|(dsh-workbench|dsh-superagent).*failed to import|failed to import.*(dsh-workbench|dsh-superagent)' <<<"$1"
+}
+
 collect_diagnostics() {
   local reason="$1"
   local out="$B/diagnostics-$(date +%Y%m%d-%H%M%S).log"
@@ -341,9 +348,12 @@ done
 # 从 journal 取本次登录 URL；登录后所有就绪判断都走 HTTP，不依赖 ctx.logger.info。
 TOKEN_URL=""
 for i in $(seq 1 60); do
-  LOG=$(journalctl --user -u dsh-web.service --since "$START" --no-pager 2>/dev/null || true)
-  if grep -Eq 'skipping profile bundle "(dsh-workbench|dsh-superagent)"|requires a loopback Web server|Lock file is already being held|failed to import|dsh-superagent failed to start' <<<"$LOG"; then
-    die "启动日志出现致命错误（见下方完整诊断）"
+  # -o cat 去掉 journal 的时间/进程前缀，才能用 ^dsh web: 提取 token URL。
+  LOG=$(journalctl --user -u dsh-web.service --since "$START" -o cat --no-pager 2>/dev/null || true)
+  FATAL=$(fatal_log "$LOG")
+  if [[ -n "$FATAL" ]]; then
+    say "$FATAL" >&2
+    die "启动日志出现致命错误（见上方匹配行与下方完整诊断）"
   fi
   TOKEN_URL=$(grep -E '^dsh web: https?://' <<<"$LOG" | tail -1 | sed 's/^dsh web: //')
   [[ -n "$TOKEN_URL" ]] && break
@@ -386,9 +396,12 @@ for i in $(seq 1 120); do
       break
     fi
   fi
-  LOG=$(journalctl --user -u dsh-web.service --since "$START" --no-pager 2>/dev/null || true)
-  if grep -Eq 'skipping profile bundle "(dsh-workbench|dsh-superagent)"|requires a loopback Web server|Lock file is already being held|failed to import|dsh-superagent failed to start' <<<"$LOG"; then
-    die "启动日志出现致命错误（见下方完整诊断）"
+  # -o cat 去掉 journal 的时间/进程前缀，才能用 ^dsh web: 提取 token URL。
+  LOG=$(journalctl --user -u dsh-web.service --since "$START" -o cat --no-pager 2>/dev/null || true)
+  FATAL=$(fatal_log "$LOG")
+  if [[ -n "$FATAL" ]]; then
+    say "$FATAL" >&2
+    die "启动日志出现致命错误（见上方匹配行与下方完整诊断）"
   fi
   sleep 1
 done

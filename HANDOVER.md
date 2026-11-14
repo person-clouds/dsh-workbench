@@ -180,7 +180,7 @@ journalctl --user -u dsh-web.service -n 200 --no-pager \
 | `skipping profile bundle "dsh-workbench"` / `"dsh-superagent"` | 失败：依赖没进 `node_modules`，重跑 `dsh plugin --profile web install` |
 | `requires a loopback Web server` | 失败：SA 补丁没应用或构建产物未更新 |
 | `Lock file is already being held` | 失败：旧 `dsh-superagent.service` 还在跑/未停干净 |
-| `failed to import` / 对应插件 `did not activate` | 失败：先查该插件目录依赖，不要继续刷新浏览器 |
+| `failed to import` / 对应插件 `did not activate` | 先看包名：`dsh-workbench` / `dsh-superagent` 的导入失败才是切换失败；profile 里其他插件（如既有的 `dsh-context-guard` 缺包）是独立警告，不回滚、不中止。脚本只匹配目标 bundle 的导入错误 |
 | HTTP 就绪超时、journal 只有 inspector | 先确认已应用 `dsh-superagent-defer-ready.patch` 并重建；脚本会输出来自 `/orchestrator/api/state` 的 `health.runtime.state`。`ctx.logger.info` 不输出到 journal，不能用 `dsh-superagent ready` 字符串判断就绪 |
 | 浏览器控制台反复报 `ws://127.0.0.1:9230/ingest failed` | 实验性 Inspector 的已知限制，不是 DSH 故障：客户端端点只允许 `127.0.0.1`，远端浏览器会把 `127.0.0.1` 指向自己。不需要 NodeJS 诊断面板时，从 `~/.dsh/profiles/web/package.json` 的 `dsh.profile.bundles` 删除 `@deepseek-ai/dsh-experimental-inspector-profile` 并重启 `dsh-web`；需要调试时再用本机浏览器打开 |
 | 失败后回滚报 `cannot resolve profile bundle "dsh-superagent-workbench"` | 新版脚本已在回滚安装前清除悬空依赖与 bundle；若手工回滚，也必须先执行同样清理，或从旧提交恢复 `task/superagent-workbench/` |

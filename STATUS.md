@@ -78,6 +78,19 @@
   在单次 consumer 生命周期内保留首个错误；ready 仅在尚未失败时上报。
 - 这是既有竞态，不是 `dsh-superagent-defer-ready.patch` 引入；两个补丁需一起应用后再跑全量测试。
 
+### 2026-11-15 首次 `--apply` 回滚：脚本把无关插件警告当致命错误
+
+- 现象：`bundle 解析` 与悬空检查均通过，服务也已启动（3080 返回 401），
+  但脚本约 5 秒后判失败并回滚。
+- 根因：日志致命匹配用了裸 `failed to import`，命中 profile 里既有的
+  `context-guard (dsh-context-guard): failed to import ... Cannot find package 'dsh-context-guard'`；
+  它与 workbench/SA 无关，服务实际仍在运行。
+- 次生问题：`journalctl --no-pager` 输出带时间/进程前缀，而提取 token 用了
+  `grep '^dsh web:'`，即使不误判也提取不到；现改为 `-o cat`。
+- 修复：新增 `fatal_log()`，只匹配 `dsh-workbench` / `dsh-superagent`
+  自身的 bundle 跳过、loopback、锁、导入失败，并打印命中行后再诊断/回滚。
+- 回滚结果正常：`3082=1，3080(401)=1`。
+
 ## 待本机执行（沙箱只读，无法代做）
 
 1. 按 `HANDOVER.md` §1 应用 `dsh-superagent-defer-ready.patch`，执行
