@@ -144,6 +144,18 @@
 > `task/dsh-compaction-archive`，可用性检查因此返回 2；不影响 workbench/SA。
 > 需在宿主机移除该依赖/链接，或恢复目标目录。
 
+### 2026-11-15 工作台 SA 管理接口返回 `Authentication required`
+
+- 现象：切换成功后，浏览器打开工作台「SA 控制」提示 `Authentication required`。
+- 根因：工作台 Host 端代理原来用 `fetch` 请求 `127.0.0.1:3080`，`fetch` 会把
+  `Host` 改成 `127.0.0.1:3080`；DSH 登录 cookie 名按 Host 绑定，SA 按新 Host
+  找不到原 cookie，判定未登录。
+- 修复：`lib/sa.js` 改用 `http.request`/`https.request`，保留浏览器原始
+  `Host` 与 `Origin`，继续转发 cookie 和 `x-orchestrator-request: 1`。
+- 回归：新增 `handover/test-sa-proxy.mjs`，断言代理到 SA 的 Host/Origin/cookie
+  与浏览器一致，已验证 PASS。
+- 生效方式：重启 `dsh-web.service` 后浏览器硬刷新。
+
 ## 待本机执行（切换后）
 
 1. 用浏览器核对 5 个标签页、SA 写操作、归档/清理 dry-run；
