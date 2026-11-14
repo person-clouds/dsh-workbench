@@ -45,6 +45,11 @@ ss -ltnp 2>/dev/null | grep -E ':3080|:3082|:8443' > "$B/ports-before.txt" || tr
 - SA 管理 API 改用 DSH Connection 的 Host/Origin/登录态校验；
 - 对应测试与文档。
 
+> 2026-11-15 补充：首次切换失败已定位为 SA `apply()` 等待
+> `runtime.ready` 与 preset 诊断互锁，增量修复见
+> `handover/dsh-superagent-defer-ready.patch`，必须在上面的补丁之后应用。
+> 根因与验证记录见 [`STATUS.md`](STATUS.md)。
+
 ```bash
 cd /home/zh/src/dsh-superagent
 git status --short   # 注意：package.json、pnpm-lock.yaml、scripts/dsh-superagent
@@ -52,14 +57,20 @@ git status --short   # 注意：package.json、pnpm-lock.yaml、scripts/dsh-supe
 git apply --check /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-superagent-single-host.patch
 git apply       /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-superagent-single-host.patch
 
+# 2026-11-15 追加：修复 Host 行激活期间 await runtime.ready 造成的 preset 死锁。
+git apply --check /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-superagent-defer-ready.patch
+git apply       /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-superagent-defer-ready.patch
+
 # 补丁不新增依赖，但保险起见：
 pnpm install
 pnpm typecheck
 pnpm test
 pnpm build
 
-# 确认构建产物存在
+# 确认构建产物存在，并确认延迟启动修复真的进了源码与产物
 test -f lib/worker-shell-env.js && echo 'worker-shell-env built'
+grep -q 'void runtime.ready.then' src/index.ts && echo 'deferred startup in src'
+grep -q 'runtime.ready.then' lib/index.js && echo 'deferred startup in lib'
 # session-policy 会打进 lib/index.js，无需独立入口
 ```
 
@@ -147,6 +158,8 @@ journalctl --user -u dsh-web.service -n 200 --no-pager \
 | `requires a loopback Web server` | 失败：SA 补丁没应用或构建产物未更新 |
 | `Lock file is already being held` | 失败：旧 `dsh-superagent.service` 还在跑/未停干净 |
 | `failed to import` / 对应插件 `did not activate` | 失败：先查该插件目录依赖，不要继续刷新浏览器 |
+| 等待 `dsh-superagent ready` 超时、journal 只有 inspector | 先确认已应用 `dsh-superagent-defer-ready.patch` 并重建；`ctx.logger.info` 不输出到 journal，不能用字符串判断 SA 就绪。用带 cookie 的 `GET /orchestrator/api/state` 检查 `health.runtime.state == "ready"` |
+| 失败后回滚报 `cannot resolve profile bundle "dsh-superagent-workbench"` | 回滚安装前先从 `web/package.json` 删除悬空依赖与 bundle，或先恢复旧 `task/superagent-workbench/` 目录 |
 
 浏览器侧若报：
 

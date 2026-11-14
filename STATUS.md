@@ -42,6 +42,79 @@
 > （无 `lib/worker-shell-env.js`，`git apply --check -R` 失败），所以之前若只做
 > 「步骤 2」必然缺新构建产物。切换脚本已在启动前强制检查该前提。
 
+## 2026-11-15 单 Host 切换失败：根因与修复（已证实）
+
+### 现象
+
+- 宿主机执行 `switch-single-host.sh --apply` 后，脚本等待
+  `dsh-workbench ready` / `dsh-superagent ready` 超时。
+- journal 只看到 `dsh inspector: devtools://…`，看不到 SA 就绪日志。
+- 脚本自动回滚时又报
+  `cannot resolve profile bundle "dsh-superagent-workbench"`；旧 3080/3082
+  最终恢复，浏览器回到回滚后的可用状态。
+- 失败态浏览器表现为“一直连接中、工作区为空、插件为空”，但静态首页仍能显示。
+  这不是登录或 `dsh-lan` 代理问题，而是 Host 启动未完成导致两条客户端通道不可用。
+
+### 根因（已用临时副本 + trace 证实）
+
+`dsh-superagent/src/index.ts` 的 `apply()` 在 Host 插件行激活期间执行了
+`await runtime.ready`。初始化链为：
+
+```text
+apply() await runtime.ready
+  -> Sessions.ensure()
+  -> sessionController.create({ agentPreset: 'dsh-superagent-router' })
+  -> composeAgent()
+  -> presets.resolve()
+  -> presetRegistry.diagnostic()
+  -> diagnostic() 发现该 preset 行仍 pending
+  -> await loader.await()   // 等待的正是当前尚未返回的 Host 插件行
+```
+
+即“自己等自己”的死锁。`@deepseek-ai/dsh-agent-preset-registry` 的约定明确要求：
+preset 的 `diagnostic()` 调用方不得位于 Host 行自己的 activation 中。
+
+### 修复
+
+把 SA 的启动等待从 `apply()` 内移出，先让本行激活、发布
+`dshSuperagentEnvironment`，再异步记录启动成功/失败：
+
+```ts
+void runtime.ready.then(
+  () => { /* info 日志 */ },
+  (error: unknown) => { ctx.logger.error('dsh-superagent failed to start: %s', String(error)) },
+)
+```
+
+增量补丁：
+[`handover/dsh-superagent-defer-ready.patch`](handover/dsh-superagent-defer-ready.patch)。
+它基于当前已应用的 `dsh-superagent-single-host.patch`，只改
+`src/index.ts` 与 `tests/index.spec.ts`。
+
+### 临时副本验证结果
+
+| 项 | 结果 |
+|---|---|
+| `tsc --noEmit` | 通过 |
+| `vitest run` | 60 文件 / 1205 用例通过 |
+| `tsdown` 构建 | 通过，`lib/index.js` 已含 `runtime.ready.then` |
+| Host 启动 trace | `preset.diagnostic audit1 dsh-superagent-router {"failed":[],"pending":[]}`，随后 `composeAgent resolved` |
+| 启动告警 | 从失败的 `5 entries did not activate` 降为 2 条既有无关告警（`dsh-context-guard` / `dsh-workflow-shortcuts` 的 `ERR_MODULE_NOT_FOUND`） |
+| 运行态 HTTP | `/dsh-workbench/api` 200；`/orchestrator/api/state` 200，`health.runtime.state == "ready"` |
+
+### 注意
+
+- `ctx.logger.info` 不写 stdout；`dsh-superagent ready` **不应作为脚本就绪判据**。
+  应通过带登录 cookie 的 `GET /orchestrator/api/state` 检查
+  `health.runtime.state == "ready"`，或 `setup.problem != null` 视为等待设置。
+- `switch-single-host.sh` **尚未**完成以下加固，下次会话应继续：
+  1. 预检 `src/index.ts` / `lib/index.js` 已包含延迟启动修复；
+  2. 超时时输出完整 journal 与定向诊断；
+  3. 回滚前先移除悬空的 `dsh-superagent-workbench` 依赖与 bundle；
+  4. 就绪检查改为 HTTP，而不是 grep `dsh-superagent ready`；
+  5. 增加 `--keep` / `--debug`，失败时可保留现场。
+- 临时验证目录 `.tmpdiag/` 不能提交；本次文档提交只新增增量补丁。
+
 ## 关键验证记录
 
 | 时间 | 项 | 结果 |
