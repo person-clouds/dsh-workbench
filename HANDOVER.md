@@ -17,6 +17,7 @@ install -d "$B/web" "$B/superagent" "$B/systemd"
 cp -a "$HOME/.dsh/storages/workspace.json" "$B/workspace.json"
 cp -a "$HOME/.dsh/profiles/web/package.json" "$HOME/.dsh/profiles/web/cordis.patch.yml" "$B/web/"
 cp -a "$HOME/.dsh/profiles/superagent/package.json" "$HOME/.dsh/profiles/superagent/cordis.patch.yml" "$B/superagent/"
+cp -a "$HOME/.dsh/state/superagent/orchestrator.sqlite" "$HOME/.dsh/state/superagent/orchestrator.sqlite-wal" "$HOME/.dsh/state/superagent/orchestrator.sqlite-shm" "$B/superagent/" 2>/dev/null || true
 cp -a "$HOME/.config/systemd/user/dsh-web.service" "$HOME/.config/systemd/user/dsh-superagent.service" "$B/systemd/"
 cp -a "$HOME/.config/systemd/user/dsh-web.service.d" "$HOME/.config/systemd/user/dsh-superagent.service.d" "$B/systemd/"
 echo "$B" > /tmp/dsh-workbench-backup-path
@@ -67,10 +68,13 @@ test -f lib/worker-shell-env.js && echo 'worker-shell-env built'
 
 ## 2. 修改 web profile
 
-先停 Host：
+先停两个 Host。顺序重要：旧 `dsh-superagent.service` 持有
+`~/.dsh/state/superagent` 的进程锁，必须先停它，否则 `web` 里的 SA 插件会启动失败：
 
 ```bash
 systemctl --user stop dsh-web.service
+systemctl --user stop dsh-superagent.service
+ss -ltnp 2>/dev/null | grep -E ':3080|:3082' || echo '两个 Host 均已停止'
 ```
 
 编辑 `~/.dsh/profiles/web/package.json`：
@@ -108,6 +112,15 @@ systemctl --user stop dsh-web.service
   disabled: false
 ```
 
+首次切换建议先关闭自动清理，人工 dry-run 确认后再启用。在
+`~/.dsh/profiles/web/cordis.patch.yml` 的 `dsh-workbench` 行下加：
+
+```yaml
+- id: dsh-workbench
+  config:
+    retentionAutoCleanup: false
+```
+
 然后安装依赖并启动：
 
 ```bash
@@ -121,10 +134,10 @@ journalctl --user -u dsh-web.service -n 120 --no-pager
 `dsh-superagent is waiting for setup`）。若出现 `import failed` / `did not activate`，
 先查该插件目录的 `node_modules/@deepseek-ai/schemastery` 是否存在。
 
-## 3. 停用第二个 Host 与 3082
+## 3. 确认停用第二个 Host 与 3082
 
 ```bash
-systemctl --user disable --now dsh-superagent.service
+systemctl --user disable dsh-superagent.service
 mv "$HOME/.config/systemd/user/dsh-superagent.service" "$(cat /tmp/dsh-workbench-backup-path)/systemd/dsh-superagent.service.disabled"
 systemctl --user daemon-reload
 ss -ltnp 2>/dev/null | grep ':3082' && echo '仍有 3082 监听，停止切换' || echo '3082 已释放'
@@ -145,6 +158,9 @@ curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3080/dsh-workbench/ap
 #   - [SA 控制] 能读 state/settings/prompts，保存一个无副作用设置后能恢复；
 #   - [保留策略] dry-run 返回候选与逐项检查；
 #   - 不再访问 3082。
+
+确认 dry-run 结果符合预期后，再把 `retentionAutoCleanup` 改回 `true` 并重启
+`dsh-web`；自动清理每 24 小时最多一次，且只处理通过全部检查的候选。
 ```
 
 服务端还应确认：
@@ -169,8 +185,13 @@ systemctl --user start dsh-web.service
 # 回退 SA 源码补丁；不要 reset 其他并行改动
 cd /home/zh/src/dsh-superagent
 git apply -R /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-superagent-single-host.patch
+pnpm install
 pnpm build
 ```
+
+若新 `dsh-web` 启动失败：按上面命令恢复 `web` profile 与旧 unit，先启动
+`dsh-superagent.service`，确认 3082 恢复，再启动 `dsh-web.service`。SA 数据库若在
+切换中异常，先用备份目录中的 `orchestrator.sqlite*` 恢复再启动；不要直接删库。
 
 ## 6. 提交与发布
 
