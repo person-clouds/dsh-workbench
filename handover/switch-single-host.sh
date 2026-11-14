@@ -9,6 +9,7 @@
 #   bash switch-single-host.sh --apply
 #   bash switch-single-host.sh --apply --keep   # 失败不回滚，保留服务与临时文件现场
 #   bash switch-single-host.sh --apply --debug  # bash -x；诊断更详细，临时文件保留
+#   bash switch-single-host.sh --self-test      # 只跑脚本逻辑自检，不碰宿主机
 set -euo pipefail
 
 REPO=/home/zh/www/personalCloud
@@ -23,18 +24,21 @@ TAIL_BASE="https://zh-gem-r7.tailb6e152.ts.net:8443"
 MODE=dry-run
 KEEP=0
 DEBUG=0
+SELF_TEST=0
 for arg in "$@"; do
   case "$arg" in
     --apply) MODE=apply ;;
     --dry-run) MODE=dry-run ;;
     --keep) KEEP=1 ;;
     --debug) DEBUG=1 ;;
+    --self-test) SELF_TEST=1 ;;
     -h|--help)
       sed -n '2,15p' "$0"
       echo
-      echo "用法: bash $0 [--dry-run|--apply] [--keep] [--debug]"
-      echo "  --keep   失败时不自动回滚，保留服务、备份与临时诊断文件"
-      echo "  --debug  输出 bash 执行 trace；失败时保留临时文件（可能含 token，勿外传）"
+      echo "用法: bash $0 [--dry-run|--apply] [--keep] [--debug] [--self-test]"
+      echo "  --keep       失败时不自动回滚，保留服务、备份与临时诊断文件"
+      echo "  --debug      输出 bash 执行 trace；失败时保留临时文件（可能含 token，勿外传）"
+      echo "  --self-test  只验证日志匹配/token 提取等纯逻辑，不读取也不修改宿主机状态"
       exit 0
       ;;
     *) echo "未知参数: $arg" >&2; exit 2 ;;
@@ -56,6 +60,51 @@ run() {
     plan "$*"
   fi
 }
+
+# 只把影响 dsh-workbench / dsh-superagent 的启动错误视为致命。
+# profile 里其他插件的 failed to import（如既有的 dsh-context-guard 缺包）是独立警告，
+# 不能因为一条泛化的 "failed to import" 就中止切换。
+# 必须始终返回 0：调用方在 set -e 下用 FATAL=$(fatal_log ...) 取值。
+fatal_log() {
+  grep -E 'skipping profile bundle "(dsh-workbench|dsh-superagent)"|requires a loopback Web server|Lock file is already being held|dsh-superagent failed to start|(dsh-workbench|dsh-superagent).*failed to import|failed to import.*(dsh-workbench|dsh-superagent)' <<<"$1" || true
+}
+
+# 首轮 journal 可能只有 systemd 启动行；pipefail 下 grep 无匹配返回 1，必须吞掉。
+extract_token_url() {
+  grep -E '^dsh web: https?://' <<<"$1" | tail -1 | sed 's/^dsh web: //' || true
+}
+
+# 纯逻辑自检：覆盖此前两次 set -e 事故：fatal_log 无匹配、token 提取无匹配。
+self_test() {
+  local failures=0 out
+  out=$(fatal_log '11月 15 06:50:16 host dsh[1]: context-guard (dsh-context-guard): failed to import: Cannot find package') \
+    || failures=$((failures + 1))
+  [[ -z "$out" ]] || { printf 'FAIL 无关插件 failed to import 不应视为致命: %s\n' "$out"; failures=$((failures + 1)); }
+
+  out=$(fatal_log '11月 15 06:50:16 host dsh[1]: dsh-superagent (dsh-superagent): failed to import: boom') \
+    || failures=$((failures + 1))
+  [[ "$out" == *'dsh-superagent'* ]] || { printf 'FAIL 目标 bundle 导入失败未被识别\n'; failures=$((failures + 1)); }
+
+  out=$(extract_token_url '11月 15 06:50:16 host systemd[1]: Started dsh-web.service') \
+    || failures=$((failures + 1))
+  [[ -z "$out" ]] || { printf 'FAIL 无 token 时应返回空: %s\n' "$out"; failures=$((failures + 1)); }
+
+  out=$(extract_token_url 'dsh web: https://example.test/?token=abc') \
+    || failures=$((failures + 1))
+  [[ "$out" == 'https://example.test/?token=abc' ]] \
+    || { printf 'FAIL token URL 提取错误: %s\n' "$out"; failures=$((failures + 1)); }
+
+  if (( failures > 0 )); then
+    printf '自检失败：%d 项\n' "$failures" >&2
+    return 1
+  fi
+  printf '自检通过：fatal_log 与 token 提取在 set -euo pipefail 下行为正确\n'
+}
+
+if [[ "$SELF_TEST" == 1 ]]; then
+  self_test
+  exit $?
+fi
 
 say "=== dsh-workbench 单 Host 切换（模式：$MODE，keep=$KEEP，debug=$DEBUG）==="
 say "web profile: $PROFILE"
@@ -132,15 +181,6 @@ NODE
   if [[ -L "$PROFILE/node_modules/dsh-superagent-workbench" ]]; then
     rm -f "$PROFILE/node_modules/dsh-superagent-workbench"
   fi
-}
-
-# 只把影响 dsh-workbench / dsh-superagent 的启动错误视为致命。
-# profile 里其他插件的 failed to import（如既有的 dsh-context-guard 缺包）是独立警告，
-# 不能因为一条泛化的 "failed to import" 就中止切换。
-fatal_log() {
-  # 必须始终返回 0：调用方在 set -e 下用 FATAL=$(fatal_log ...) 取值，
-  # grep 无匹配返回 1 会让脚本在“没有致命错误”时直接退出。
-  grep -E 'skipping profile bundle "(dsh-workbench|dsh-superagent)"|requires a loopback Web server|Lock file is already being held|dsh-superagent failed to start|(dsh-workbench|dsh-superagent).*failed to import|failed to import.*(dsh-workbench|dsh-superagent)' <<<"$1" || true
 }
 
 collect_diagnostics() {
@@ -357,9 +397,7 @@ for i in $(seq 1 60); do
     say "$FATAL" >&2
     die "启动日志出现致命错误（见上方匹配行与下方完整诊断）"
   fi
-  # 首轮 journal 可能只有 systemd 启动行；pipefail 下 grep 无匹配返回 1，
-  # 必须 || true，否则 set -e 会在“还没打印 token”时直接退出。
-  TOKEN_URL=$(grep -E '^dsh web: https?://' <<<"$LOG" | tail -1 | sed 's/^dsh web: //' || true)
+  TOKEN_URL=$(extract_token_url "$LOG")
   [[ -n "$TOKEN_URL" ]] && break
   sleep 1
 done

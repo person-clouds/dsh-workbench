@@ -107,6 +107,17 @@
 - 修复：提取管道末尾加 `|| true`，让轮询在无 token 时正常 sleep 重试。
 - 同类隐患已全量排查：其余 `grep` 均在 `if` / `|| die` / `|| true` 中。
 
+### 2026-11-15 增加切换脚本 `--self-test`
+
+- 连续两次问题都不是业务错误，而是 `set -euo pipefail` 下的 shell 控制流；
+  diagnostics 收集发生在退出之后，所以日志里看不到“错误”。
+- 新增 `--self-test`：不读取、不修改宿主机，只验证
+  `fatal_log()` 无匹配/目标命中、`extract_token_url()` 无 token/有 token 四种场景。
+- 新增 `handover/test-switch-single-host.sh`：用假 `systemctl`/`journalctl`/`curl`/`dsh`
+  在临时 `HOME`/`DSH_HOME` 中跑完 `--apply` 全路径（含首轮无 token 的轮询），
+  不接触宿主机服务或真实 profile。
+- `HANDOVER.md` §2 执行顺序改为 `--self-test` → mock 回归 → `--dry-run` → `--apply`。
+
 ## 待本机执行（沙箱只读，无法代做）
 
 1. 按 `HANDOVER.md` §1 应用 `dsh-superagent-defer-ready.patch`，执行

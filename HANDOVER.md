@@ -96,10 +96,13 @@ grep -q 'runtime.ready.then' lib/index.js && echo 'deferred startup in lib'
 >
 > 若没有输出「已应用 / 已构建」，不要进入第 2 步；先回到 §1。
 
-推荐直接运行脚本（默认 dry-run；`--apply` 才会停 Host、改 profile 并启动）：
+先跑不碰宿主机的自检与 mock 全路径回归，再 dry-run，最后才 `--apply`：
 
 ```bash
 cd /home/zh/www/personalCloud
+bash task/dsh-workbench/handover/switch-single-host.sh --self-test   # 必须输出「自检通过」
+bash task/dsh-workbench/handover/test-switch-single-host.sh          # 必须输出 PASS
+bash task/dsh-workbench/handover/switch-single-host.sh --dry-run     # 只检查文件与打印计划
 bash task/dsh-workbench/handover/switch-single-host.sh --apply
 
 # 失败时保留新 Host/临时文件现场，不自动回滚（排障用）：
