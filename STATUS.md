@@ -1,6 +1,6 @@
 # STATUS — DSH 工作台
 
-- 更新时间：2026-11-15（切换脚本加固）
+- 更新时间：2026-11-15（单 Host 切换成功）
 - 一句话：DSH 单 Host 下的统一工作台。面板覆盖工作区、仓库、文档、工单和 SA 控制；
   SA 管理写操作统一走 `/orchestrator/api/*` 代理，60 天保留与清理有 dry-run 和逐项安全检查。
 - 位置：`task/dsh-workbench/`；包名 `dsh-workbench@0.2.0`。
@@ -129,14 +129,28 @@
   返回 403，防止回归。
 - 验证：`--self-test`、mock 全路径回归、`bash -n` 均通过。
 
-## 待本机执行（沙箱只读，无法代做）
+## 2026-11-15 单 Host 切换成功（本机）
 
-1. 按 `HANDOVER.md` §1 应用 `dsh-superagent-defer-ready.patch`，执行
-   `pnpm typecheck && pnpm test && pnpm build`；
-2. 运行 `bash task/dsh-workbench/handover/switch-single-host.sh --dry-run` 预检通过后，
-   执行 `--apply`：备份、停两个 Host、改 `web` profile、安装依赖、启动并验证登录/WS/SSE；
-3. 用浏览器核对 5 个标签页、SA 写操作、归档/清理 dry-run；
-4. dry-run 通过后再把 `retentionAutoCleanup` 改为 `true`。
+- [x] `switch-single-host.sh --apply` 通过：3080 单 Host 启动，SA 作为 web profile
+      插件接管状态目录；3082 已停用，旧 `dsh-superagent.service` 已 disable。
+- [x] 可用性检查核心链路通过：HTTP 401 → token 303 → 首页 200、`/api/remote.mux` 101、
+      `/plugins/events` connected + graph。
+- [x] 扩展链路通过：`/dsh-workbench/api` 200、`/orchestrator/api/state` ready、
+      `dsh-workbench` / `dsh-superagent` bundle 可解析。
+- [ ] 浏览器人工核对 5 个标签页、SA 写操作、归档/清理 dry-run。
+- [ ] dry-run 通过后再把 `retentionAutoCleanup` 改为 `true`。
+
+> 已知非阻塞项：profile 内 `dsh-compaction-archive` 链接指向不存在的
+> `task/dsh-compaction-archive`，可用性检查因此返回 2；不影响 workbench/SA。
+> 需在宿主机移除该依赖/链接，或恢复目标目录。
+
+## 待本机执行（切换后）
+
+1. 用浏览器核对 5 个标签页、SA 写操作、归档/清理 dry-run；
+2. dry-run 通过后把 `~/.dsh/profiles/web/cordis.patch.yml` 的
+   `retentionAutoCleanup` 改为 `true` 并重启 `dsh-web`；
+3. 若尚未执行，按 `HANDOVER.md` §1 应用
+   `dsh-superagent-feishu-health-race.patch`，再跑 `pnpm typecheck && pnpm test && pnpm build`。
 
 > 2026-11-15 复核：`dsh-superagent-single-host.patch` 已应用且
 > `lib/worker-shell-env.js` 已构建；但 `src/index.ts` 仍是 `await runtime.ready`，
