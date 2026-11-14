@@ -169,6 +169,29 @@ node --input-type=module -e "console.log(import.meta.resolve('dsh-workbench')); 
 systemctl --user start dsh-web.service
 ```
 
+### 切换后验收与保留清理（脚本化，可追溯）
+
+以下操作已固化在仓库脚本中，不要手工拼命令：
+
+```bash
+# 1. 验证 SA 代理 + 执行保留清理 dry-run（只报告，不删除）
+bash task/dsh-workbench/handover/retention-dry-run.sh
+
+# 2. 预览自动清理开关（默认不改文件）
+bash task/dsh-workbench/handover/enable-retention-auto-cleanup.sh
+
+# 3. dry-run 和人工检查都通过后，才开启自动清理（自动备份并重启）
+bash task/dsh-workbench/handover/enable-retention-auto-cleanup.sh --apply
+
+# 4. 全链路可用性检查
+bash .dsh/skills/dsh-usability-check/scripts/check.sh
+```
+
+- dry-run 结果：`~/.dsh/state/workbench/dry-run-<时间>.json`；
+- 审计记录：`~/.dsh/state/workbench/retention-audit.log`；
+- 自动清理配置备份：`~/.dsh/backups/dsh-workbench/retention-config-<时间>.yml`；
+- 离线回归：`bash task/dsh-workbench/handover/test-retention-scripts.sh`。
+
 启动后先验证 HTTP，日志只用于诊断（`ctx.logger.info` 不写 journal）：
 
 ```bash

@@ -137,8 +137,12 @@
       `/plugins/events` connected + graph。
 - [x] 扩展链路通过：`/dsh-workbench/api` 200、`/orchestrator/api/state` ready、
       `dsh-workbench` / `dsh-superagent` bundle 可解析。
-- [ ] 浏览器人工核对 5 个标签页、SA 写操作、归档/清理 dry-run。
-- [ ] dry-run 通过后再把 `retentionAutoCleanup` 改为 `true`。
+- [x] 工作台 SA 代理鉴权修复：保留浏览器原始 Host/Origin，附离线回归。
+- [x] 验收与清理已脚本化：`handover/retention-dry-run.sh`、
+      `handover/enable-retention-auto-cleanup.sh`，写操作带备份和审计记录。
+- [ ] 浏览器人工核对 5 个标签页、SA 写操作。
+- [ ] 执行 `retention-dry-run.sh`，确认结果后再执行
+      `enable-retention-auto-cleanup.sh --apply`。
 
 > 已知非阻塞项：profile 内 `dsh-compaction-archive` 链接指向不存在的
 > `task/dsh-compaction-archive`，可用性检查因此返回 2；不影响 workbench/SA。
