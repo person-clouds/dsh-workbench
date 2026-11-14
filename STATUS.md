@@ -22,6 +22,9 @@
       与提示词编辑；工单重试/停止。
 - [x] 语法与打包自检：`node --check index.js`、`client.js` 的 `vm.Script` 解析、
       `npm pack --dry-run` 通过。
+- [x] 修复浏览器端重复加载注册失败：`zh`/`en` 字典移入 `factory` 闭包，顶层只保留
+      `window.__ModuleLoader__.load({...})`。旧写法在 HMR/重复加载时会因顶层 `const`
+      重声明抛 `SyntaxError`，表现为 `loaded without registering "dsh-workbench"`。
 - [x] SA 侧配套补丁：worker 环境改为显式 `env`（不再改 `process.env`）、`WORK_TOOLS` 移除
       subagent/跨 Session 工具、启动时异常会话归档对账（只归档不删除）、
       `DSH_DISABLE_SUPERAGENT=1` 安全模式、SA 管理 API 使用 DSH Connection 鉴权。该补丁在 `/tmp/dsh-sa-patch` 草案中通过
@@ -44,6 +47,7 @@
 | 2026-11-14 | `node --check index.js` / `lib/*.js` | 通过 |
 | 2026-11-14 | `client.js` `vm.Script` 解析 | 通过 |
 | 2026-11-14 | `npm pack --dry-run` | `dsh-workbench@0.2.0`，15 文件 |
+| 2026-11-14 | `client.js` 连续加载两次（Chromium + `vm.Script`） | 两次均注册 `dsh-workbench`，无重声明异常 |
 | 2026-11-14 | SA 补丁 `tsc --noEmit` | 通过 |
 | 2026-11-14 | SA 补丁 `vitest run` | 60 文件 / 1203 用例通过 |
 | 2026-11-14 | SA 补丁 `tsdown` | `lib/worker-shell-env.js` 等构建通过 |
@@ -51,7 +55,8 @@
 
 ## 已知约束
 
-- `client.js` 是普通脚本，顶层不能出现 `import`/`export`；`zh`/`en` 字典内联且需与
-  `locale/*.json` 同步。
+- `client.js` 是普通脚本，顶层不能出现 `import`/`export`，也不能放 `const`/`let`/`class`
+  等顶层词法声明（HMR 重复加载会重声明失败）；顶层只允许 `window.__ModuleLoader__.load`。
+  `zh`/`en` 字典在 `factory` 内联，需与 `locale/*.json` 同步。
 - 插件目录需本地 `@deepseek-ai/schemastery`；重装后若缺依赖，Host 导入会失败。
 - 清理只覆盖 SA 约定 worktree 与 DSH 工作区注册，不删除 session 日志，不提供 `rm -rf`。

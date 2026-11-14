@@ -134,6 +134,23 @@ journalctl --user -u dsh-web.service -n 120 --no-pager
 `dsh-superagent is waiting for setup`）。若出现 `import failed` / `did not activate`，
 先查该插件目录的 `node_modules/@deepseek-ai/schemastery` 是否存在。
 
+若浏览器报：
+
+```
+dsh-workbench: Error: client-modules: could not load "dsh-workbench":
+plugins/??dsh-workbench/client.js&rev=...: loaded without registering
+```
+
+按顺序检查：
+
+1. 打开新标签页并 `Ctrl+Shift+R` 强制刷新（旧页面会缓存失败的 bundle）；
+2. DevTools Console 是否有 `Uncaught SyntaxError`；
+3. 确认 `task/dsh-workbench/client.js` 顶层只有 `window.__ModuleLoader__.load({...})`，
+   `zh`/`en` 字典在 `factory` 内（0.2.0 已修；旧写法的顶层 `const` 在 HMR/重复加载时
+   会重声明失败）；
+4. 确认 `web` profile 的 `bundles` 已删除旧 `dsh-superagent-workbench`，没有两个工作台
+   bundle 同时入列。
+
 ## 3. 确认停用第二个 Host 与 3082
 
 ```bash
@@ -192,6 +209,16 @@ pnpm build
 若新 `dsh-web` 启动失败：按上面命令恢复 `web` profile 与旧 unit，先启动
 `dsh-superagent.service`，确认 3082 恢复，再启动 `dsh-web.service`。SA 数据库若在
 切换中异常，先用备份目录中的 `orchestrator.sqlite*` 恢复再启动；不要直接删库。
+
+注意：`58a06a1` 已把 `task/superagent-workbench/` 改名为 `task/dsh-workbench/`。
+仅恢复 `web/package.json` 时，旧依赖
+`dsh-superagent-workbench -> task/superagent-workbench` 会悬空，旧面板不会出现。
+若要连旧面板一起回滚，先从旧提交导出目录再启动：
+
+```bash
+cd /home/zh/www/personalCloud
+git archive 58a06a1^ task/superagent-workbench | tar -x -C .
+```
 
 ## 6. 提交与发布
 
