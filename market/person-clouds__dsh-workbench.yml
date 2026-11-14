@@ -1,0 +1,7 @@
+url: https://github.com/person-clouds/dsh-workbench
+name: person-clouds/dsh-workbench
+category: ui
+description:
+  en: 'Unified DSH workbench: workspaces, repositories, Markdown docs, SA tickets and SA runtime control in one sidebar panel.'
+  zh: 'DSH 统一工作台：在一个侧栏面板里管理工作区、仓库、文档、SA 工单与运行控制。'
+tarball: https://github.com/person-clouds/dsh-workbench/releases/latest/download/dsh-workbench.tgz

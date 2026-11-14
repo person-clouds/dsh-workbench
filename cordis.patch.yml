@@ -1,0 +1,6 @@
+# DSH 工作台：Host 端读取 DSH workspaceRegistry、SA 工单库和 git 对象；
+# Client 端在侧栏加一个「DSH 工作台」面板。
+# 所有路径都有默认值；SA 管理操作通过 /orchestrator/api 转发。
+- insert:
+    - id: dsh-workbench
+      name: dsh-workbench

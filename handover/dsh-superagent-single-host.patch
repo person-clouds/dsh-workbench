@@ -1,0 +1,820 @@
+diff --git a/cordis.patch.yml b/cordis.patch.yml
+index 84c143d..512b7b4 100644
+--- a/cordis.patch.yml
++++ b/cordis.patch.yml
+@@ -60,6 +60,9 @@
+               - id: tool-pwsh
+                 name: '@deepseek-ai/dsh-tool-pwsh'
+                 disabled: !!js process.platform !== 'win32'
++              # Worker-only shell environment: adds the isolated git config and CLI shims to every command in this preset.
++              - id: worker-shell-env
++                name: dsh-superagent/worker-shell-env
+           - id: tool-fs
+             name: '@deepseek-ai/dsh-tool-fs'
+           - id: tool-fs-search
+@@ -164,6 +167,9 @@
+               - id: tool-pwsh
+                 name: '@deepseek-ai/dsh-tool-pwsh'
+                 disabled: !!js process.platform !== 'win32'
++              # Worker-only shell environment: adds the isolated git config and CLI shims to every command in this preset.
++              - id: worker-shell-env
++                name: dsh-superagent/worker-shell-env
+           - id: tool-fs
+             name: '@deepseek-ai/dsh-tool-fs'
+             config:
+diff --git a/docs/003-execution.md b/docs/003-execution.md
+index 6cb33a8..44e91b0 100644
+--- a/docs/003-execution.md
++++ b/docs/003-execution.md
+@@ -26,25 +26,24 @@ Each Ticket gets an Executor Session named `worker-<ticket id>` and a directory
+ 
+ Executor Sessions run commands without approval as the operator's OS user. Their `dsh-superagent-worker` preset contains the tools needed for work and moves foreground shell commands to background jobs after 5 seconds. This lets a worker receive new messages at the next step instead of waiting for a long command to finish.
+ 
+-The main Session uses `dsh-superagent-router`, with the same 5-second shell and job-wait limits and a smaller tool set for routing. Sessions retain the preset selected at creation. Worker subagents use DeepSeek Harness's `standard` preset.
++The main Session uses `dsh-superagent-router`, with the same 5-second shell and job-wait limits and a smaller tool set for routing. Sessions retain the preset selected at creation. One Ticket has exactly one Executor Session and the main Session routes all work, so workers receive no tools for starting subagents.
+ 
+ ### Background work and worker slots
+ 
+-When a turn ends with shell jobs or subagents still running, the Ticket keeps its worker slot and stays working. It is not reported as waiting, and the main Session receives no waiting report. A completed job or subagent wakes the Executor with its result in the same slot. Once a turn ends with no background work, the Executor reports waiting normally.
++When a turn ends with shell jobs still running, the Ticket keeps its worker slot and stays working. It is not reported as waiting, and the main Session receives no waiting report. A completed job wakes the Executor with its result in the same slot. Once a turn ends with no background work, the Executor reports waiting normally.
+ 
+-After each turn, background work has at most 30 minutes to finish. At that limit, shell jobs are killed and the Ticket is reported waiting. The report includes the Executor's last words and which jobs were killed or subagents remain active. Subagents are allowed to continue. The Executor reads killed-job results on its next turn.
++After each turn, background work has at most 30 minutes to finish. At that limit, shell jobs are killed and the Ticket is reported waiting. The report includes the Executor's last words and which jobs were killed. The Executor reads killed-job results on its next turn.
+ 
+ A handoff to a person frees the slot immediately and leaves the Report in effect. This applies after a `ready` Report or a question, unless another Input arrived since, and after any `blocked` or `failed` Report.
+ 
+-At handoff, subagents stop. Shell jobs, such as a server offered for review, may continue until the Assignment ends. They hold no slot and are exempt from the 30-minute limit, including after later turns. Their completion does not wake the Executor; it reads the results on its next turn.
++At handoff, shell jobs, such as a server offered for review, may continue until the Assignment ends. They hold no slot and are exempt from the 30-minute limit, including after later turns. Their completion does not wake the Executor; it reads the results on its next turn.
+ 
+ A person can also start a turn by writing directly in the Executor Session. Its background work follows the same rules.
+ 
+-When an Assignment ends, its shell jobs are killed without waking the Session. Its subagents are released, and any completion turns they wake are dropped. The replacement Assignment and its waiting Inputs start after that shutdown finishes.
++When an Assignment ends, its shell jobs are killed without waking the Session. The replacement Assignment and its waiting Inputs start after that shutdown finishes.
+ 
+ Stopping or restarting the plugin inside the DeepSeek Harness process uses the same shutdown path. Inputs not yet taken into Session history are retained. Shutdown waits up to 10 seconds for each worker's background work; a process restart ends that work outright. An Assignment interrupted while busy restarts with a recovery note.
+ 
+-Worker subagents, including nested ones, use DeepSeek Harness's `standard` preset with the worker's permissions. They retain only the worker's allowed work tools, and lose those tools when the Ticket ends. Under `standard`, a shell command moves to the background after 60 seconds. A subagent's jobs are killed when it ends.
+ 
+ ### Preparing a Ticket directory
+ 
+diff --git a/docs/006-deployment.md b/docs/006-deployment.md
+index d4e810f..9ecc592 100644
+--- a/docs/006-deployment.md
++++ b/docs/006-deployment.md
+@@ -4,7 +4,7 @@ Use this guide to install, configure and operate dsh-superagent. It covers accou
+ 
+ ## What runs
+ 
+-- **A dedicated DeepSeek Harness profile**, called `superagent` in this guide. Create it from the Web profile template. It loads the bundle and serves its panel on `127.0.0.1`. Keep it separate from the profile you work in: the plugin changes process-wide `PATH` and git settings, and its process needs independent restarts and upgrades.
++- **One DeepSeek Harness Host**: install `dsh-superagent` into the profile you use for work. The Host serves the Web UI, the plugin's panel at `/orchestrator`, and its management API on the same origin. Workers receive their own environment explicitly; the Host's `process.env` is never changed, so personal Sessions keep their shell and git settings.
+ - **An agent GitHub account.** The agent comments, pushes branches and opens pull requests as this account, through a GitHub CLI signed in only as that account.
+ - **Optional:** a Feishu bot for chat requests.
+ 
+@@ -219,7 +219,7 @@ Setup uses the DeepSeek Harness subprocess service, as worker shells do. It remo
+ 
+ Setup verifies the GitHub repository and the agent's push access, writes the worker environment, and checks that git uses only the agent credentials for github.com. A Feishu setup failure disables only the Feishu Source.
+ 
+-The process environment that setup writes:
++The environment that setup writes and passes explicitly to worker commands:
+ 
+ - **Command shims** in `<stateDir>/worker-bin`, first on `PATH`: `gh` runs the agent's CLI; `lark-cli` runs the bot's CLI; blocked commands fail. A shim removes its own directory from `PATH` before it runs its target.
+ - **git configuration** in `<stateDir>/worker-gitconfig`: replaces the operator's global and system git configuration. It selects the agent CLI as the github.com credential helper, rewrites GitHub SSH addresses to HTTPS and defines Git LFS filters. Personal git settings such as an HTTP proxy do not apply. No commit identity is set here, git never prompts for credentials, and `GH_TOKEN` and `GITHUB_TOKEN` are removed.
+diff --git a/docs/007-architecture.md b/docs/007-architecture.md
+index 184ea54..1d19e01 100644
+--- a/docs/007-architecture.md
++++ b/docs/007-architecture.md
+@@ -32,7 +32,7 @@ flowchart TB
+ 
+ Startup registers management routes and runs Setup. After setup resolves, it installs Session and Executor hooks, ensures the main Session exists, starts Policy syncs, resumes interrupted Assignments, and starts passes and effects. `ready` marks completion of startup.
+ 
+-Shutdown cancels turns, waits for passes, effects and agents, restores the process environment, closes the Store and releases the lock. Source plugins inject Runtime as the `orchestrator` service through the narrow `SourceHost` interface.
++Shutdown cancels turns, waits for passes, effects and agents, closes the Store and releases the lock. The Host's process environment is never mutated. Source plugins inject Runtime as the `orchestrator` service through the narrow `SourceHost` interface.
+ 
+ | Part | Module | Does |
+ | --- | --- | --- |
+@@ -232,7 +232,7 @@ Validation inherits an omitted base from the saved override, drops removed parts
+ 
+ ### Sessions
+ 
+-`Sessions` (`src/app/sessions.ts`) manages DeepSeek Harness Sessions for both roles. `ensure` creates a Session with its role's model. `install` follows agent events and registers prompts, skills and tools for managed Sessions.
++`Sessions` (`src/app/sessions.ts`) manages DeepSeek Harness Sessions for both roles. `ensure` creates a Session with its role's model. `install` follows agent events and registers prompts, skills and tools for managed Sessions. `reconcile`, run at startup, archives Sessions in dsh-superagent's workspace roots that are not the orchestrator or a known Ticket's worker; it only archives, never deletes.
+ 
+ `prompt` delivers once per request id. `relay` and `notify` enqueue main-Session messages handled by the `relay` and `notice` effects. `src/app/notices.ts` defines their content; `delivery` checks whether a message arrived.
+ 
+@@ -290,7 +290,8 @@ Some generic modules still refer directly to GitHub or Feishu:
+ 
+ | Path | Responsibility |
+ | --- | --- |
+-| `src/index.ts` | The main plugin entry: reads the machine settings, starts the Runtime, and gives it the restart that a save of a Source's account uses |
++| `src/index.ts` | The main plugin entry: reads the machine settings, starts the Runtime, and gives it the restart that a save of a Source's account uses; `DSH_DISABLE_SUPERAGENT=1` skips it in safe mode |
++| `src/worker-shell-env.ts` | A worker/router preset's isolated shell wrapper: adds the deployment's git configuration and CLI shims to every command without mutating the host environment |
+ | `src/deployment.ts` | The plugin `Config` and `Machine`; `resolveDeployment` and `resolveFeishuBot` read the repository and the accounts from the Source settings, each CLI run as Executor shells run it; `SETUP_FIELDS` lists the Source fields setup reads. The code names no person, account or organization |
+ | `src/setup.ts` | Setup problems: `SetupError`, with a code, the place that fixes it and the English text the log, the main Session and the panel share |
+ | `src/policy.ts` | The Policy: the settings schemas by block, the Policy version, the gate and Mandate revalidation |
+@@ -330,6 +331,7 @@ Some generic modules still refer directly to GitHub or Feishu:
+ | `src/app/context.ts` | The built-in prompt text, read from `prompts/`, and the transcript entries Sessions read |
+ | `src/app/skill-files.ts` | Packaged text: `promptFile`, which joins a file's one-sentence lines into paragraphs, and the bundled skills |
+ | `src/app/sessions.ts` | Sessions |
++| `src/app/session-policy.ts` | The exact Session set dsh-superagent owns and workspace-root containment for orphan reconciliation |
+ | `src/app/delivery.ts` | `AgentDelivery`: delivers a message to a DeepSeek Harness agent once per request id, also across a restored Session |
+ | `src/app/retry-health.ts` | `RetryHealth`: which Sessions wait on a model budget retry, for the `models` health entry |
+ | `src/app/role-models.ts` | Resolves the Eval and Executor models, and seeds a new Session with its role's model |
+@@ -354,7 +356,7 @@ Some generic modules still refer directly to GitHub or Feishu:
+ | `src/executor/dsh.ts` | The DshExecutor, `WorkerSlots`, `ticketExecution`, `inputMessage` and `mandateInstructions` |
+ | `src/executor/background.ts` | A worker's background work in DeepSeek Harness, the shell jobs its Session owns (`ctx.jobs`) and its subagents (`ctx.subagents`): `runningJobs`, `untilQuiet`, `killJobs`, `collectJobs`, `stopSubagents`, `stopBackground`, `until`, and `cancelled`, the workers whose turn a stop of their subagents cancelled |
+ | `src/infra/commands.ts` | `Commands`, the CLI transport: `run`; `api` and `pages`, limited to the configured repository and validated; `lark` as the bot; `git`. `CliError` carries the code a command's output reports, such as a GitHub HTTP status, and a command that prints nothing fails with how it ended, never with its arguments; `validItems` skips and counts the malformed items of a list |
+-| `src/infra/environment.ts` | The agent's process environment: command shims, the git configuration and credential helper, `runAsWorker`, and the checks of the environment and of a Ticket's directory |
++| `src/infra/environment.ts` | The worker environment: command shims, the git configuration and credential helper, `workerEnvironment`, `runAsWorker`, and the checks of the environment and of a Ticket's directory |
+ | `src/infra/paths.ts` | The package's root, where packaged files are |
+ | `src/infra/text.ts` | Word counts and the chat message limit, `fill` and `sameName` |
+ | `src/infra/health.ts` | The `HealthBoard`, every part's health entry, each claimed by its one writer |
+@@ -422,11 +424,12 @@ Some generic modules still refer directly to GitHub or Feishu:
+ | `tests/followups.spec.ts` | A person's follow-up on a Ticket's Thread: its notice to the main Session, the tools that act on it, what a burst costs; a worker's hand-back and context follow, and the main Session's note |
+ | `tests/health.spec.ts` | One health entry per part, each cleared by its own next success |
+ | `tests/delivery.spec.ts` | `AgentDelivery` |
++| `tests/session-policy.spec.ts` | The exact Session set dsh-superagent owns, and managed workspace-root containment |
+ | `tests/retry-health.spec.ts`, `tests/role-models.spec.ts` | Model budget retries, and the models of the two roles |
+ | `tests/runtime.spec.ts` | The whole application on a simulated DeepSeek Harness host, through tools and HTTP |
+ | `tests/tools.spec.ts` | The Sessions' tools: what `orchestrator_read` reads for each role, and the shapes and checks of the other main Session tools |
+ | `tests/runtime-concurrency.spec.ts` | Work that overlaps: Triggers during a pass, Tickets that change during deliveries and launches |
+-| `tests/http.spec.ts` | The same-origin and loopback checks, the status of each kind of failure, the body limit, path parameters and queries |
++| `tests/http.spec.ts` | The DSH Connection Host/Origin and authentication fence, the `x-orchestrator-request` CSRF header, the status of each kind of failure, the body limit, path parameters and queries |
+ | `tests/settings.spec.ts` | Settings saves that race a model or account check, a Policy sync that a save outran, and the refusals of the pause, a sync and a block |
+ | `tests/views.spec.ts` | What the management views derive from the Store, such as the Thread a dropped message belongs to |
+ | `tests/timeline.spec.ts` | A Thread's pages and a Trigger's neighbours by time and then id, with every received Trigger's time in one form |
+@@ -529,7 +532,7 @@ Each Executor has six application tools:
+ 
+ A hand-back returns `queued: false` if another Ticket still owns the message, or this Ticket never owned it. For example, a bot message went to Eval independently.
+ 
+-The worker preset is defined in `cordis.patch.yml` and selected through `WORKER_PRESET`. `WORK_TOOLS` in `src/app/sessions.ts` retains available file, search, shell, job, web, skill, todo and subagent tools. Workers do not receive tools for asking or presenting to a person, changing the profile, scheduling work outside worker slots, starting or messaging other Sessions, or editing external documents. Tool calls are refused after the Ticket ends.
++The worker preset is defined in `cordis.patch.yml` and selected through `WORKER_PRESET`. `WORK_TOOLS` in `src/app/sessions.ts` retains file, search, shell, job, web, skill and todo tools. Workers do not receive tools for asking or presenting to a person, changing the profile, scheduling work outside worker slots, starting or messaging other Sessions or subagents, or editing external documents. Tool calls are refused after the Ticket ends.
+ 
+ ### Result shapes and assessment context
+ 
+diff --git a/package.json b/package.json
+index 6afd24b..80fd88b 100644
+--- a/package.json
++++ b/package.json
+@@ -16,6 +16,7 @@
+     "./client": "./lib/client.js",
+     "./github-watch": "./lib/github-watch.js",
+     "./feishu-watch": "./lib/feishu-watch.js",
++    "./worker-shell-env": "./lib/worker-shell-env.js",
+     "./package.json": "./package.json",
+     "./locale/*.json": "./locale/*.json"
+   },
+diff --git a/src/app/http.ts b/src/app/http.ts
+index 13c0115..6656af4 100644
+--- a/src/app/http.ts
++++ b/src/app/http.ts
+@@ -1,4 +1,4 @@
+-/** Loopback-only management HTTP routes with same-origin enforcement for the web panel. */
++/** Management HTTP routes guarded by DSH Connection's Host/Origin fence and browser authentication. */
+ import type { Context } from '@deepseek-ai/cordis'
+ import type {} from '@deepseek-ai/dsh-host-webserver'
+ import type { IncomingMessage, ServerResponse } from 'node:http'
+@@ -72,11 +72,6 @@ async function readBody(req: IncomingMessage, maxBytes = 128 * 1024): Promise<un
+ function json(res: ServerResponse, status: number, value: unknown): void {
+   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' }); res.end(JSON.stringify(value))
+ }
+-export function sameOrigin(req: Pick<IncomingMessage, 'headers'>, port: number): boolean {
+-  const host = req.headers.host
+-  if (host !== `127.0.0.1:${port}` && host !== `localhost:${port}`) return false
+-  return req.headers['x-orchestrator-request'] === '1' && (req.headers.origin === undefined || req.headers.origin === `http://${host}`)
+-}
+ /** Maps errors to HTTP status codes and structured payloads that the panel localizes in the interface language. */
+ function failure(error: unknown): [number, Record<string, unknown>] {
+   if (error instanceof z.ZodError) {
+@@ -228,13 +223,22 @@ function match(table: Routes, method: string, segments: string[]) {
+   return undefined
+ }
+ export function registerHttp(ctx: Context, runtime: HttpHost): () => void {
+-  if (ctx.webServer.host !== '127.0.0.1') throw new Error('Orchestrator management requires a loopback Web server')
+   const table = routes(runtime)
+   const disposers = [
+     ctx.webServer.register({ kind: 'prefix', path: '/orchestrator', handler: async (req, res) => {
+       const url = new URL(req.url ?? '/', 'http://localhost')
+       if (!url.pathname.startsWith('/orchestrator/api/')) { res.writeHead(404); res.end(); return }
+-      if (!sameOrigin(req, ctx.webServer.port)) { json(res, 403, { error: 'Same-origin management request required' }); return }
++      // DSH Connection owns the Host/Origin fence and browser/API authentication, including Tailnet Serve and other
++      // configured public origins. The extra header keeps ordinary cross-site form posts out even when a cookie is present.
++      const rejection = (ctx as unknown as { connection: { requestRejection(request: { headers: typeof req.headers }): 401 | 403 | undefined } }).connection.requestRejection(req)
++      if (rejection !== undefined) {
++        json(res, rejection, { error: rejection === 401 ? 'Authentication required' : 'Same-origin management request required' })
++        return
++      }
++      if (req.headers['x-orchestrator-request'] !== '1') {
++        json(res, 403, { error: 'Same-origin management request required' })
++        return
++      }
+       try {
+         await runtime.ready
+         const route = match(table, req.method ?? 'GET', url.pathname.slice('/orchestrator/api/'.length).split('/'))
+diff --git a/src/app/runtime.ts b/src/app/runtime.ts
+index a8cfe52..3155213 100644
+--- a/src/app/runtime.ts
++++ b/src/app/runtime.ts
+@@ -18,7 +18,7 @@ import { allowedSender, settingsPolicy } from '../policy.ts'
+ import { SourceRegistry } from '../sources/registry.ts'
+ import { Commands } from '../infra/commands.ts'
+ import type { Deployment, Machine } from '../deployment.ts'
+-import { environmentOf, ticketEnvironment, type Variable } from './execution-environment.ts'
++import { environmentOf, executionRoot, ticketEnvironment, type Variable } from './execution-environment.ts'
+ import type { SetupProblem } from '../setup.ts'
+ import { DshExecutor, sourceTrigger, triggerMessage, workerSessionId } from '../executor/dsh.ts'
+ import { ticketCard } from './cards.ts'
+@@ -121,7 +121,8 @@ export class Runtime extends Service implements SourceHost {
+       const sessions = this.sessions = new Sessions({ context: ctx, store, prompts, effects, health: board.claim('models'), masterId,
+         lifetime: this.lifetime,
+         closing: () => this.closing(), environment,
+-        tools: (agent, ticket) => ticket ? executorTools(this.toolHost, ticket) : mainTools(this.toolHost, agent) })
++        tools: (agent, ticket) => ticket ? executorTools(this.toolHost, ticket) : mainTools(this.toolHost, agent),
++        reconcileRoots: () => [this.machine.stateDir, executionRoot(store.settings(), this.machine.stateDir)] })
+       const policyChanged: EngineForSettings['policyChanged'] = (from, to, effects) => { this.engine.policyChanged(from, to, effects) }
+       this.settings = new Settings({ store, sources, engine: { policyChanged }, health: board, context: ctx, lifetime: this.lifetime, sessions,
+         sourceHost: this, setup, requestPass: () => { this.passes.request() } })
+@@ -208,6 +209,7 @@ export class Runtime extends Service implements SourceHost {
+     this.sessions.install()
+     this.executor.install()
+     await this.sessions.ensure(this.masterId, this.machine.stateDir, 'dsh-superagent orchestrator', 'orchestrator')
++    await this.sessions.reconcile()
+     for (const id of this.settings.syncable()) await this.settings.sync(id).catch(() => { /* sync() records its failure in health. */ })
+     // If stop() was called while awaiting setup, session creation, or policy sync, do not start background loops.
+     if (this.closing()) return
+@@ -243,7 +245,6 @@ export class Runtime extends Service implements SourceHost {
+       await this.ctx.sessionPersistence.flush()
+     } finally {
+       // Close the database before releasing the directory lock so another process cannot open the database mid-write; a compromised lock may already be released.
+-      this.setup.restore()
+       try { this.store.close() } finally {
+         const unreleased = (error: unknown) => { this.ctx.logger.warn('dsh-superagent could not release its state directory lock: %s',
+           String(error)) }
+diff --git a/src/app/session-policy.ts b/src/app/session-policy.ts
+new file mode 100644
+index 0000000..6798bc0
+--- /dev/null
++++ b/src/app/session-policy.ts
+@@ -0,0 +1,19 @@
++/** Session-policy helpers: the only Sessions dsh-superagent owns, and which workspace paths it manages. */
++import { isAbsolute, relative, resolve, sep } from 'node:path'
++
++/** Returns the IDs of every Session dsh-superagent owns: one orchestrator and one worker per Ticket. */
++export function managedSessionIds(masterId: string, tickets: readonly { id: string }[]): string[] {
++  return [masterId, ...tickets.map(ticket => `worker-${ticket.id}`)]
++}
++
++/** Whether `path` is `root` or a descendant of it, after resolving both. */
++export function withinRoot(root: string, path: string): boolean {
++  if (!root || !path) return false
++  const rel = relative(resolve(root), resolve(path))
++  return rel === '' || (!rel.startsWith(`..${sep}`) && rel !== '..' && !isAbsolute(rel))
++}
++
++/** Whether `path` is inside at least one managed root. */
++export function withinAnyRoot(roots: readonly string[], path: string): boolean {
++  return roots.some(root => withinRoot(root, path))
++}
+diff --git a/src/app/sessions.ts b/src/app/sessions.ts
+index 1a22388..3e76fec 100644
+--- a/src/app/sessions.ts
++++ b/src/app/sessions.ts
+@@ -8,6 +8,7 @@ import { dirname } from 'node:path'
+ import { z } from 'zod'
+ import { key, liveTicket, type Ticket } from '../core/index.ts'
+ import { mandateInstructions, ticketOfSession } from '../executor/dsh.ts'
++import { managedSessionIds, withinAnyRoot } from './session-policy.ts'
+ import type { HealthEntry } from '../infra/health.ts'
+ import { AgentDelivery, messageId } from './delivery.ts'
+ import type { Effects } from './effects.ts'
+@@ -36,6 +37,8 @@ export interface SessionsHost {
+   environment(ticket: Ticket): Variable[]
+   /** Tools to register on the main Session (`ticket === undefined`) or on `ticket`'s worker Session. */
+   tools(agent: Agent, ticket?: Ticket): Tool[]
++  /** Roots whose workspaces and Sessions dsh-superagent owns; only Sessions outside the valid set are archived. */
++  reconcileRoots(): readonly string[]
+ }
+ 
+ /**
+@@ -53,13 +56,12 @@ declare module '@deepseek-ai/cordis' {
+   }
+ }
+ /**
+- * The DSH tools an Executor Session works with: files, search, the shell and its jobs, the web, skills, its todo list and
+- * subagents. It gets no other tool the profile has, whenever it was registered: none that asks or shows a person something,
+- * changes the profile, schedules work or starts goals outside the worker slots, the pause and a person's hold, starts or
+- * messages other Sessions, or edits documents.
++ * The DSH tools an Executor Session works with: files, search, the shell and its jobs, the web, skills and its todo list.
++ * It gets no tool that starts or messages other Sessions: one Ticket has exactly one Executor Session, while the main
++ * Session routes all work.
+  */
+ const WORK_TOOLS = ['read', 'write', 'edit', 'read_image', 'glob', 'grep', 'bash', 'pwsh', 'job_output', 'job_list', 'job_kill', 'web_search',
+-  'web_fetch', 'skill', 'todo_write', 'subagent', 'list_subagent_models', 'send_message', 'list_agents', 'interrupt_agent']
++  'web_fetch', 'skill', 'todo_write']
+ /** What the main Session is told when it would wait: what it waits for comes to it, and a waiting step holds back the next. */
+ const NO_WAIT = 'Reports, follow_up notices, new candidates and a background job\'s end with its output arrive by themselves as messages; '
+   + 'end the turn instead of waiting for them.'
+@@ -153,6 +155,36 @@ export class Sessions {
+     await ctx.sessionController.rename({ sessionId: id as SessionId, title })
+     return result.agent
+   }
++  /**
++   * Archives Sessions in dsh-superagent's own workspace roots that are not in the valid set (the orchestrator plus one
++   * worker per known Ticket). Reconciliation only archives: Session logs, workspace records and directories are kept.
++   * Called at startup so a legacy subagent or a Session for a deleted Ticket disappears from the DSH UI without data loss.
++   */
++  async reconcile(): Promise<{ sessionId: string; workspaceId: string; path: string }[]> {
++    const registry = this.ctx.workspaceRegistry
++    if (typeof registry.list !== 'function' || typeof registry.archiveSession !== 'function') return []
++    const valid = new Set(managedSessionIds(this.host.masterId, this.host.store.tickets.list()))
++    const archived = new Set(registry.archivedSessionIds)
++    const roots = this.host.reconcileRoots()
++    const actions: { sessionId: string; workspaceId: string; path: string }[] = []
++    for (const workspace of registry.list()) {
++      if (!withinAnyRoot(roots, workspace.path)) continue
++      for (const sessionId of workspace.sessionIds) {
++        if (valid.has(sessionId) || archived.has(sessionId)) continue
++        try {
++          await registry.archiveSession(sessionId, { stopActivity: true })
++          actions.push({ sessionId, workspaceId: String(workspace.id), path: workspace.path })
++        } catch (error) {
++          this.ctx.logger.warn('dsh-superagent could not archive orphan Session %s in %s: %s', sessionId, workspace.path,
++            String(error))
++        }
++      }
++    }
++    if (actions.length) this.ctx.logger.info('dsh-superagent archived %d orphan Session(s): %s', actions.length,
++      actions.map(action => action.sessionId).join(', '))
++    else this.ctx.logger.info('dsh-superagent Session policy valid: %d managed Session(s)', valid.size)
++    return actions
++  }
+   /** Returns whether `sessionId` already holds the message delivered under `requestId`, or `false` if the session does not exist. */
+   async holds(sessionId: string, requestId: string): Promise<boolean> {
+     const result = await this.ctx.sessionController.resolveAgent(sessionId as SessionId)
+diff --git a/src/app/setup.ts b/src/app/setup.ts
+index a1d353f..2a358b1 100644
+--- a/src/app/setup.ts
++++ b/src/app/setup.ts
+@@ -2,7 +2,7 @@
+ import type { Context } from '@deepseek-ai/cordis'
+ import { UserError } from '../core/index.ts'
+ import { SETUP_FIELDS, resolveDeployment, resolveFeishuBot, workerProbe, type Deployment, type Machine } from '../deployment.ts'
+-import { agentVariables, applyEnvironment, verifyEnvironment, withoutDirectory, workerBin, writeEnvironment } from '../infra/environment.ts'
++import { agentVariables, verifyEnvironment, withoutDirectory, workerBin, writeEnvironment } from '../infra/environment.ts'
+ import type { Settings, SettingsBlock } from '../policy.ts'
+ import { SetupError, type SetupProblem } from '../setup.ts'
+ 
+@@ -29,7 +29,6 @@ export class Setup {
+   private readonly path: string
+   /** Environment variables pointing agent subprocesses at the isolated git config and command shims. */
+   private readonly variables: Record<string, string | undefined>
+-  private restoreEnvironment?: () => void
+   constructor(private readonly host: SetupHost) {
+     this.path = withoutDirectory(process.env.PATH ?? '', workerBin(host.machine.stateDir))
+     this.variables = agentVariables(host.machine.stateDir)
+@@ -67,7 +66,6 @@ export class Setup {
+   async blockCommands(blocked: readonly string[]): Promise<void> {
+     if (this.resolved) await writeEnvironment(this.resolved, blocked)
+   }
+-  restore(): void { this.restoreEnvironment?.(); this.restoreEnvironment = undefined }
+   /** Probes CLIs the way worker shells run them, using `stateDir` as `cwd` since it exists even before the repository clone is valid. */
+   private probe() {
+     const { context, machine, lifetime } = this.host
+@@ -89,11 +87,7 @@ export class Setup {
+       throw new SetupError('environmentFailed', { output: error instanceof Error ? error.message : String(error) })
+     }
+     await writeEnvironment(resolved, settings.executor.blockedCommands).catch(machineProblem)
+-    this.restoreEnvironment = applyEnvironment(this.variables, machine.stateDir, this.path)
+-    await verifyEnvironment(resolved, context.subprocess, lifetime).catch((error: unknown) => {
+-      this.restore()
+-      machineProblem(error)
+-    })
++    await verifyEnvironment(resolved, context.subprocess, lifetime).catch(machineProblem)
+     return resolved
+   }
+ }
+diff --git a/src/deployment.ts b/src/deployment.ts
+index 76340cb..1aa3368 100644
+--- a/src/deployment.ts
++++ b/src/deployment.ts
+@@ -6,7 +6,7 @@ import type { Volatile } from '@deepseek-ai/cordis'
+ import s from '@deepseek-ai/schemastery'
+ import { z } from 'zod'
+ import type { SubprocessRuntime } from '@deepseek-ai/dsh-subprocess'
+-import { runAsWorker, sameDirectory, withoutDirectory, workerBin } from './infra/environment.ts'
++import { runAsWorker, sameDirectory, withoutDirectory, workerBin, workerEnvironment } from './infra/environment.ts'
+ import { SetupError } from './setup.ts'
+ 
+ const reason = (error: unknown): string => error instanceof Error ? error.message : String(error)
+@@ -72,7 +72,8 @@ export type Probe = (argv: string[]) => Promise<string>
+ /** Run startup checks through DSH's worker subprocess service with worker shims removed from PATH so a `gh` wrapper script reaches the real binary. */
+ export function workerProbe(subprocess: SubprocessRuntime, stateDir: string, cwd: string, signal: AbortSignal): Probe {
+   const path = withoutDirectory(process.env.PATH ?? '', workerBin(stateDir))
+-  return argv => runAsWorker(subprocess, ['env', `PATH=${path}`, ...argv], cwd, AbortSignal.any([signal, AbortSignal.timeout(60_000)]))
++  // Probe with the worker environment but without the shim directory, so a wrapper script resolves the real CLI.
++  return argv => runAsWorker(subprocess, argv, cwd, AbortSignal.any([signal, AbortSignal.timeout(60_000)]), workerEnvironment(stateDir, path, { PATH: path }))
+ }
+ 
+ const GithubUser = z.object({ login: z.string().regex(/^[A-Za-z0-9-]+$/), id: z.number().int().positive() })
+diff --git a/src/executor/dsh.ts b/src/executor/dsh.ts
+index 6098163..f7cafb8 100644
+--- a/src/executor/dsh.ts
++++ b/src/executor/dsh.ts
+@@ -8,7 +8,7 @@ import { key, latestAssignment, latestReport, liveTicket, runningAssignment, thr
+ import type { AssessmentOutcome, Assignment, EngineForExecutor, Execution, Executor, Mandate, PolicyEffect, Ticket, TicketInput, Trigger }
+   from '../core/index.ts'
+ import type { Machine } from '../deployment.ts'
+-import { runAsWorker, verifyDirectory } from '../infra/environment.ts'
++import { runAsWorker, verifyDirectory, workerEnvironment } from '../infra/environment.ts'
+ import type { Settings } from '../policy.ts'
+ import type { Store } from '../app/store.ts'
+ import { Later, type Effects } from '../app/effects.ts'
+@@ -255,14 +255,14 @@ export class DshExecutor implements Executor {
+     const env = Object.fromEntries(this.host.environment(ticket).map(variable => [variable.key, variable.value]))
+     // Enforce a timeout so a hung prepare command (such as on a credential prompt) fails the ticket instead of holding a worker slot indefinitely.
+     const signal = AbortSignal.any([this.host.lifetime, AbortSignal.timeout(PREPARE_TIMEOUT_MS)])
+-    if (command) await runAsWorker(this.host.context.subprocess, ['sh', '-c', command], dirname(directory), signal, env)
++    if (command) await runAsWorker(this.host.context.subprocess, ['sh', '-c', command], dirname(directory), signal, { ...workerEnvironment(this.host.machine.stateDir), ...env })
+       .catch(async (error: unknown) => {
+         // Remove an empty directory left by a failed prepare command so a later retry does not treat it as already prepared.
+         await rmdir(directory).catch(() => { /* Absent, or holding what the command wrote, which the output explains. */ })
+         throw new PrepareFailed(`The prepare command failed: ${error instanceof Error ? error.message : String(error)}`)
+       })
+     await mkdir(directory, { recursive: true })
+-    await verifyDirectory(directory, this.host.context.subprocess, this.host.lifetime)
++    await verifyDirectory(directory, this.host.machine.stateDir, this.host.context.subprocess, this.host.lifetime)
+   }
+   /** Enqueues a `launch` effect for an accepted or resumed assignment; launches start in queue order as worker slots free up. */
+   start(ticket: Ticket, assignment: Assignment): void {
+diff --git a/src/index.ts b/src/index.ts
+index 1889daf..cd77e96 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -4,11 +4,23 @@ import type {} from '@deepseek-ai/dsh-settings'
+ import { Runtime } from './app/runtime.ts'
+ import { Config, machineOf, type DeploymentConfig } from './deployment.ts'
+ 
++declare module '@deepseek-ai/cordis' {
++  interface Context {
++    /** State directory shared by the worker/router shell-environment wrappers of this dsh-superagent instance. */
++    dshSuperagentEnvironment: { stateDir: string }
++  }
++}
++
+ export const name = 'dsh-superagent'
+-export const inject = ['agents', 'sessionController', 'sessionPersistence', 'workspaceRegistry', 'permissionPresets', 'tools', 'systemPrompt', 'skills', 'webServer', 'llm', 'subprocess']
++export const inject = ['agents', 'sessionController', 'sessionPersistence', 'workspaceRegistry', 'permissionPresets', 'tools', 'systemPrompt', 'skills', 'webServer', 'connection', 'llm', 'subprocess']
+ export { Config }
+ export async function apply(ctx: Context, config: DeploymentConfig): Promise<void> {
++  if (process.env.DSH_DISABLE_SUPERAGENT === '1') {
++    ctx.logger.info('dsh-superagent is disabled by DSH_DISABLE_SUPERAGENT=1')
++    return
++  }
+   const machine = machineOf(config)
++  ctx.provide('dshSuperagentEnvironment', { stateDir: machine.stateDir })
+   // The management panel provides its own settings UI, so disable DSH's auto-generated settings page.
+   ctx.inject(['settings'], child => { child.effect(() => child.settings.configure({ auto: false }, ctx.fiber)) })
+   // Volatile limits update in place without a restart; account changes restart dsh-superagent. DSH's settings service stops
+diff --git a/src/infra/environment.ts b/src/infra/environment.ts
+index b6d92c3..cbf2ded 100644
+--- a/src/infra/environment.ts
++++ b/src/infra/environment.ts
+@@ -115,13 +115,14 @@ export async function writeEnvironment(deployment: Pick<Deployment, 'stateDir' |
+   ].join('\n') + '\n')
+ }
+ 
+-/** Applies environment overrides and prepends worker shims to `process.env.PATH`, returning a restore callback. */
+-export function applyEnvironment(variables: Record<string, string | undefined>, stateDir: string, path: string): () => void {
+-  const values = { ...variables, PATH: [workerBin(stateDir), path].join(delimiter) }
+-  const previous = Object.fromEntries(Object.keys(values).map(name => [name, process.env[name]]))
+-  const apply = (env: Record<string, string | undefined>): void => { for (const [name, value] of Object.entries(env)) { if (value === undefined) delete process.env[name]; else process.env[name] = value } }
+-  apply(values)
+-  return () => { apply(previous) }
++/**
++ * Returns the environment of a worker subprocess: the isolated git configuration, no ambient credentials or git identity,
++ * and the worker shim directory before the host PATH. This is passed only to subprocesses that act as workers; it never
++ * mutates `process.env`, so the DSH Host and personal Sessions keep their own environment.
++ */
++export function workerEnvironment(stateDir: string, path = process.env.PATH ?? '', overrides: Record<string, string | undefined> = {}): Record<string, string> {
++  const values: Record<string, string | undefined> = { ...agentVariables(stateDir), PATH: [workerBin(stateDir), path].join(delimiter), ...overrides }
++  return Object.fromEntries(Object.entries(values).filter((entry): entry is [string, string] => entry[1] !== undefined))
+ }
+ 
+ /** Spawns a command through the DSH subprocess runtime, which strips credential-shaped environment variables. */
+@@ -138,7 +139,8 @@ export async function runAsWorker(subprocess: SubprocessRuntime, argv: string[],
+ export async function verifyEnvironment(deployment: Pick<Deployment, 'github' | 'stateDir'>, subprocess: SubprocessRuntime, signal: AbortSignal): Promise<void> {
+   const { github, stateDir } = deployment
+   // `-z` separates fields with NUL and never quotes paths.
+-  const helpers = (await runAsWorker(subprocess, ['git', 'config', '-z', '--show-origin', '--get-all', 'credential.https://github.com.helper'], stateDir, AbortSignal.any([signal, AbortSignal.timeout(60_000)])).catch(() => '')).split('\0')
++  const helpers = (await runAsWorker(subprocess, ['git', 'config', '-z', '--show-origin', '--get-all', 'credential.https://github.com.helper'], stateDir,
++    AbortSignal.any([signal, AbortSignal.timeout(60_000)]), workerEnvironment(stateDir)).catch(() => '')).split('\0')
+   if (helpers.join('\0') !== [`file:${workerGitConfig(stateDir)}`, credentialHelper(github.cli), ''].join('\0')) throw new SetupError('gitTooOld')
+ }
+ 
+@@ -146,10 +148,10 @@ export async function verifyEnvironment(deployment: Pick<Deployment, 'github' |
+  * Verifies that a ticket directory's local or worktree git config defines no custom `credential.*` or `http.*extraheader`
+  * keys, which the agent's git would read from the repository's own config and act on.
+  */
+-export async function verifyDirectory(directory: string, subprocess: SubprocessRuntime, signal: AbortSignal): Promise<void> {
++export async function verifyDirectory(directory: string, stateDir: string, subprocess: SubprocessRuntime, signal: AbortSignal): Promise<void> {
+   const keys = ['git', 'config', '-z', '--show-scope', '--get-regexp', '^(credential\\..*|http\\..*extraheader)$']
+   // `git config --get-regexp` exits with code 1 when no keys match.
+-  const output = await runAsWorker(subprocess, keys, directory, AbortSignal.any([signal, AbortSignal.timeout(60_000)]))
++  const output = await runAsWorker(subprocess, keys, directory, AbortSignal.any([signal, AbortSignal.timeout(60_000)]), workerEnvironment(stateDir))
+     .catch((error: unknown) => { if (error instanceof CliError && error.exitCode === 1) return ''; throw error })
+   const scoped = output.split('\0')
+   const local = scoped.flatMap((scope, index) => index % 2 === 0 && (scope === 'local' || scope === 'worktree') ? [scoped[index + 1]!.split('\n')[0]!] : [])
+diff --git a/src/worker-shell-env.ts b/src/worker-shell-env.ts
+new file mode 100644
+index 0000000..039c9cc
+--- /dev/null
++++ b/src/worker-shell-env.ts
+@@ -0,0 +1,24 @@
++/**
++ * Worker-only shell environment: wraps the isolated `ctx.shell` of a worker or router preset so every command carries the
++ * deployment's git configuration and CLI shim PATH. It runs inside each preset's isolated shell group; the DSH Host and
++ * personal Sessions use their own environment and `process.env` is never mutated.
++ */
++import type { Context } from '@deepseek-ai/cordis'
++import { workerEnvironment } from './infra/environment.ts'
++
++export const name = 'worker-shell-env'
++export const inject = ['shell', 'dshSuperagentEnvironment']
++
++interface ShellRequestLike { command: string; [key: string]: unknown }
++interface ShellSpecLike { env?: Record<string, string>; [key: string]: unknown }
++interface ShellLike { resolve(request: ShellRequestLike): ShellSpecLike }
++
++export function apply(ctx: Context): void {
++  const shell = (ctx as unknown as { shell: ShellLike }).shell
++  const { stateDir } = ctx.dshSuperagentEnvironment
++  const resolve = shell.resolve.bind(shell)
++  shell.resolve = (request: ShellRequestLike): ShellSpecLike => {
++    const spec = resolve(request)
++    return { ...spec, env: { ...workerEnvironment(stateDir), ...spec.env } }
++  }
++}
+diff --git a/tests/environment.spec.ts b/tests/environment.spec.ts
+index db2bf3e..3a7aad2 100644
+--- a/tests/environment.spec.ts
++++ b/tests/environment.spec.ts
+@@ -134,7 +134,7 @@ describe('ticket directory check', () => {
+   const signal = new AbortController().signal
+   const env = () => gitEnv({ GIT_CONFIG_GLOBAL: join(dir, 'global'), GIT_CONFIG_NOSYSTEM: '1' })
+   const git = (...args: string[]) => exec('git', args, { cwd: dir, env: env() })
+-  const check = (directory: string) => verifyDirectory(join(dir, directory), subprocess(join(dir, 'global')), signal)
++  const check = (directory: string) => verifyDirectory(join(dir, directory), dir, subprocess(join(dir, 'global')), signal)
+   beforeEach(() => { writeFileSync(join(dir, 'global'), '[credential]\n\thelper = global-helper\n') })
+   it('passes a directory whose repository adds no credentials, and one outside any repository', async () => {
+     await git('init', '-q', 'repo')
+@@ -151,7 +151,7 @@ describe('ticket directory check', () => {
+   it('fails when git cannot read the repository\'s configuration, instead of passing it', async () => {
+     await git('init', '-q', 'repo')
+     writeFileSync(join(dir, 'repo', '.git', 'config'), '[core\n')
+-    await expect(check('repo')).rejects.toThrow(/bad config/)
++    await expect(check('repo')).rejects.toThrow(/bad config|错误的配置行/)
+   })
+   it('reports a failed command\'s exit status', async () => {
+     const failing = ['sh', '-c', 'echo nope >&2; exit 3']
+@@ -174,7 +174,7 @@ describe('the repository the host\'s environment names', () => {
+       // What the tests do: a repository of their own, checked as a ticket directory.
+       await exec('git', ['init', '-q', 'repo'], { cwd: dir, env: gitEnv({ GIT_CONFIG_GLOBAL: join(dir, 'global'), GIT_CONFIG_NOSYSTEM: '1' }) })
+       writeFileSync(join(dir, 'global'), '')
+-      await expect(verifyDirectory(join(dir, 'repo'), subprocess(join(dir, 'global')), new AbortController().signal)).resolves.toBeUndefined()
++      await expect(verifyDirectory(join(dir, 'repo'), dir, subprocess(join(dir, 'global')), new AbortController().signal)).resolves.toBeUndefined()
+       expect(readdirSync(join(dir, 'repo'))).toContain('.git')
+       expect(config()).toBe(before)
+       // The worker environment, which workers' shells and the host's own commands get, names no repository.
+diff --git a/tests/fixtures/host.ts b/tests/fixtures/host.ts
+index 70ace2e..29f2b20 100644
+--- a/tests/fixtures/host.ts
++++ b/tests/fixtures/host.ts
+@@ -236,10 +236,11 @@ export async function startRuntime(seed?: (store: Store) => void) {
+   const reader = { read: async () => ({ events: [] }), [Symbol.asyncDispose]: async () => {} }
+   const persistence = { flush: vi.fn(async () => {}), open: vi.fn(async () => reader) }
+   const webServer = { host: '127.0.0.1', port: 3082, register: (route: { handler: HttpHandler }) => { http = route.handler; return () => {} } }
++  const connection = { requestRejection: () => undefined }
+   const jobs = jobRegistry(id => agents.get(id))
+   const subagents = subagentRuntime(agents)
+   const services = { agents, llm: { resolveCallConfig: vi.fn(async (value: unknown) => value) }, sessionController: controller,
+-    sessionPersistence: persistence, workspaceRegistry: { create: async (cwd: string) => ({ id: cwd }) }, permissionPresets: { set: () => {} }, subprocess, webServer,
++    sessionPersistence: persistence, workspaceRegistry: { create: async (cwd: string) => ({ id: cwd }), list: () => [], archivedSessionIds: [] as string[], archiveSession: vi.fn(async () => {}) }, permissionPresets: { set: () => {} }, subprocess, webServer, connection,
+     jobs: jobs.service, subagents: subagents.service }
+   const ctx = new Context()
+   for (const [name, service] of Object.entries(services)) ctx.reflect.provide(name, service)
+diff --git a/tests/http.spec.ts b/tests/http.spec.ts
+index 19086c5..59236a1 100644
+--- a/tests/http.spec.ts
++++ b/tests/http.spec.ts
+@@ -12,12 +12,19 @@ type Headers = Record<string, string | undefined>
+ /** Mount management HTTP routes on a fake web server and return a request helper that includes default panel headers. */
+ function serve(runtime: Partial<Record<keyof HttpHost, unknown>>, host = '127.0.0.1') {
+   let handler: Handler = async () => {}
+-  const ctx = { webServer: { host, port: 3082, register: (route: { handler: Handler }) => { handler = route.handler; return () => {} } } }
++  const ctx = { webServer: { host, port: 3082, register: (route: { handler: Handler }) => { handler = route.handler; return () => {} } },
++    // Mirrors DSH Connection: trusted Host/Origin first, then browser authentication.
++    connection: { requestRejection: (request: { headers: Record<string, string | undefined> }) => {
++      const headers = request.headers
++      const trusted = headers.host === '127.0.0.1:3082' || headers.host === 'localhost:3082' || headers.host === 'zh.tailnet.ts.net'
++      if (!trusted || headers.origin !== undefined && headers.origin !== `http://${headers.host}`) return 403
++      return headers['x-authenticated'] === '0' ? 401 : undefined
++    } } }
+   registerHttp(ctx as never, { ready: Promise.resolve(), ...runtime } as unknown as HttpHost)
+   return async (method: string, path: string, body?: unknown, headers: Headers = {}) => {
+     let status = 0, text = ''
+     const chunks = body === undefined ? [] : [Buffer.from(typeof body === 'string' ? body : JSON.stringify(body))]
+-    const sent = Object.fromEntries(Object.entries({ host: '127.0.0.1:3082', 'x-orchestrator-request': '1', ...headers }).filter(([,
++    const sent = Object.fromEntries(Object.entries({ host: '127.0.0.1:3082', 'x-orchestrator-request': '1', 'x-authenticated': '1', ...headers }).filter(([,
+       value]) => value !== undefined))
+     const req = { method, url: `/orchestrator/api/${path}`, headers: sent, async *[Symbol.asyncIterator]() { yield* chunks } }
+     await handler(req, { writeHead: (code: number) => { status = code }, end: (data: string) => { text = data } })
+@@ -67,7 +74,7 @@ it('decodes path parameters and parses each route\'s query', async () => {
+   expect(seen).toEqual(['feishu:oc_1:om/root', { filter: { kinds: ['accept', 'reopen'], since: expect.any(String) }, offset: 0, limit: 200 }])
+ })
+ 
+-it('answers only a same-origin request from the panel on the loopback address', async () => {
++it('delegates Host/Origin and authentication to DSH Connection, and still requires the panel header', async () => {
+   const call = serve({ sessions: { delivery: async () => 'injected' }, engine: { unsubscribe: () => true } })
+   const post = (headers: Headers) => call('POST', 'threads/github%3A1/unsubscribe', undefined, headers)
+   for (const headers of [{ 'x-orchestrator-request': undefined }, { host: 'evil.example:3082' }, { host: '127.0.0.1:9999' },
+@@ -75,9 +82,11 @@ it('answers only a same-origin request from the panel on the loopback address',
+     expect(await post(headers), JSON.stringify(headers)).toEqual({ status: 403,
+       body: { error: 'Same-origin management request required' } })
+   }
++  expect(await post({ 'x-authenticated': '0' })).toEqual({ status: 401, body: { error: 'Authentication required' } })
+   expect(await post({ host: 'localhost:3082', origin: 'http://localhost:3082' })).toMatchObject({ status: 200 })
+-  // Management routes require a loopback Web server.
+-  expect(() => serve({}, '0.0.0.0')).toThrow('Orchestrator management requires a loopback Web server')
++  // A Tailnet Serve authority accepted by Connection is admitted too, and the Web server no longer has to bind loopback.
++  expect(await post({ host: 'zh.tailnet.ts.net', origin: 'http://zh.tailnet.ts.net' })).toMatchObject({ status: 200 })
++  expect(() => serve({}, '0.0.0.0')).not.toThrow()
+ })
+ 
+ it('answers a prompt save that lost a race with 409, and a settings body over 128 KiB with 400', async () => {
+diff --git a/tests/index.spec.ts b/tests/index.spec.ts
+index 5f4d642..2db27cf 100644
+--- a/tests/index.spec.ts
++++ b/tests/index.spec.ts
+@@ -24,6 +24,7 @@ function context() {
+     fiber: { restart: vi.fn(async () => {}) },
+     get: vi.fn((name: string) => name === 'settings' ? { describe } : undefined),
+     logger: { info: vi.fn(), error: vi.fn() },
++    provide: vi.fn(() => () => {}),
+   }
+   return { ctx, handlers, configure, describe }
+ }
+diff --git a/tests/model-surface.spec.ts b/tests/model-surface.spec.ts
+index 13f9d41..bb30003 100644
+--- a/tests/model-surface.spec.ts
++++ b/tests/model-surface.spec.ts
+@@ -134,7 +134,7 @@ async function start() {
+     workspaceRegistry: { create: async (cwd: string) => ({ id: cwd }) },
+     sessionController: { create, resolveAgent, selectModel: async () => {}, rename: async () => {}, inspect: async () => ({ events: [] }) },
+     sessionPersistence: { flush: async () => {}, open: async () => history }, permissionPresets: { set: () => {} }, subprocess,
+-    webServer: { host: '127.0.0.1', port: 3082, register: () => () => {} } }
++    webServer: { host: '127.0.0.1', port: 3082, register: () => () => {} }, connection: { requestRejection: () => undefined } }
+   for (const [name, service] of Object.entries(services)) ctx.reflect.provide(name, service)
+   const seed = new Store(join(directory, 'orchestrator.sqlite'))
+   const github = { enabled: true, config: { repository: 'acme/widgets', cli: AGENT } }
+diff --git a/tests/runtime.spec.ts b/tests/runtime.spec.ts
+index fd737f2..26db337 100644
+--- a/tests/runtime.spec.ts
++++ b/tests/runtime.spec.ts
+@@ -75,6 +75,9 @@ async function receive(trigger: Trigger, target = runtime) {
+   return result
+ }
+ let services: Record<string, unknown>
++/** DSH workspace registry the Runtime reconciles; tests can add workspaces and orphans. */
++let workspaceRegistry: { create: (cwd: string) => Promise<{ id: string }>; list: () => { id: string; path: string; sessionIds: string[] }[];
++  archivedSessionIds: string[]; archiveSession: ReturnType<typeof vi.fn> }
+ /** DSH's job registry the Runtime's Executor reads its workers' shell jobs from. */
+ let jobs: ReturnType<typeof jobRegistry>
+ /** What worker commands of the startup checks print, by argv; an Error makes the command fail with its message. */
+@@ -203,7 +206,8 @@ beforeEach(async () => {
+     inspect: vi.fn(async () => ({ events: [] })),
+   }
+   jobs = jobRegistry()
+-  services = { agents, llm: { resolveCallConfig: vi.fn(async value => value) }, sessionController: controller, sessionPersistence: { flush: vi.fn(async () => {}), open: vi.fn(async () => ({ read: async () => ({ events: [] }), [Symbol.asyncDispose]: async () => {} })) }, workspaceRegistry: { create: async (cwd: string) => ({ id: cwd }) }, permissionPresets: { set: () => {} }, subprocess, webServer: { host: '127.0.0.1', port: 3082, register: (route: { handler: HttpHandler }) => { http = route.handler; return () => {} } }, jobs: jobs.service }
++  workspaceRegistry = { create: async (cwd: string) => ({ id: cwd }), list: () => [], archivedSessionIds: [], archiveSession: vi.fn(async () => {}) }
++  services = { agents, llm: { resolveCallConfig: vi.fn(async value => value) }, sessionController: controller, sessionPersistence: { flush: vi.fn(async () => {}), open: vi.fn(async () => ({ read: async () => ({ events: [] }), [Symbol.asyncDispose]: async () => {} })) }, workspaceRegistry: workspaceRegistry, permissionPresets: { set: () => {} }, subprocess, webServer: { host: '127.0.0.1', port: 3082, register: (route: { handler: HttpHandler }) => { http = route.handler; return () => {} } }, connection: { requestRejection: () => undefined }, jobs: jobs.service }
+   for (const [name, service] of Object.entries(services)) ctx.reflect.provide(name, service)
+   for (const cli of [AGENT(), OTHER(), BOT()]) writeFileSync(cli, '#!/bin/sh\n', { mode: 0o755 })
+   const store = new Store(join(directory, 'orchestrator.sqlite')); seed(store); store.close()
+@@ -849,11 +853,11 @@ it('reports each setup problem where the operator fixes it, and checks the agent
+   answers[`${AGENT()} api repos/acme/widgets --jq {name: .full_name, push: .permissions.push}`] = '{"name":"acme/widgets","push":false}\n'
+   await needs('github', 'repositoryReadOnly', { account: 'agent-bot', repository: 'acme/widgets' })
+   answers[`${AGENT()} api repos/acme/widgets --jq {name: .full_name, push: .permissions.push}`] = '{"name":"acme/widgets","push":true}\n'
+-  // The agent CLI runs in the workers' environment: without the shims on PATH.
+-  const check = subprocess.spawn.mock.calls.map(([spec]) => spec.argv).find(argv => argv.includes(AGENT()))!
+-  expect(check[0]).toBe('env')
+-  expect(check[1]!.startsWith('PATH=')).toBe(true)
+-  expect(check[1]!.slice('PATH='.length).split(':')).not.toContain(join(directory, 'worker-bin'))
++  // The agent CLI runs in the workers' environment, which is passed explicitly and never mutates the host's process.env.
++  const check = subprocess.spawn.mock.calls.map(([spec]) => spec as { argv: string[]; env?: Record<string, string> })
++    .find(spec => spec.argv.includes(AGENT()))!
++  expect(check.env?.PATH?.split(':')).not.toContain(join(directory, 'worker-bin'))
++  expect(check.env?.GIT_CONFIG_GLOBAL).toBe(workerGitConfig(directory))
+   const valid = { ...answers }
+   // git older than 2.32 ignores GIT_CONFIG_GLOBAL and reads the operator's configuration.
+   answers = { ...valid, [HELPERS]: 'file:/home/me/.gitconfig\0!gh auth git-credential\0' }
+@@ -954,7 +958,7 @@ it('pauses and resumes processing as its own action, a setting outside every blo
+   expect(runtime.store.settings().paused).toBe(false)
+ })
+ 
+-it('runs setup again while the Feishu bot check failed, and restores the process environment when git fails its check', async () => {
++it('runs setup again while the Feishu bot check failed, and never mutates the process environment when git fails its check', async () => {
+   answers[`${BOT()} config strict-mode`] = 'strict-mode: off (source: profile)'
+   const next = await restart()
+   await next.ready
+@@ -970,7 +974,7 @@ it('runs setup again while the Feishu bot check failed, and restores the process
+   expect(process.env.PATH?.split(':')).not.toContain(join(directory, 'worker-bin'))
+ })
+ 
+-it('writes worker shims and the agent environment from the configuration only, and restores the environment on stop', async () => {
++it('writes worker shims and the agent environment from the configuration only, and never mutates the process environment', async () => {
+   const bin = join(directory, 'worker-bin')
+   expect(readdirSync(bin).sort()).toEqual(['gh', 'lark-cli'])
+   expect(readFileSync(join(bin, 'lark-cli'), 'utf8')).toContain(`exec '${BOT()}'`)
+@@ -982,9 +986,13 @@ it('writes worker shims and the agent environment from the configuration only, a
+   expect(readFileSync(join(bin, 'lark-cli'), 'utf8')).toContain('lark-cli is unavailable: this installation has no Feishu bot.')
+   expect(readFileSync(join(bin, 'gh'), 'utf8')).toContain(`exec '${AGENT()}'`)
+   expect(readFileSync(workerGitConfig(directory), 'utf8')).toContain(`[credential "https://github.com"]\n\thelper = "${credentialHelper(AGENT())}"`)
+-  expect(process.env).toMatchObject({ GIT_CONFIG_GLOBAL: workerGitConfig(directory), GIT_CONFIG_NOSYSTEM: '1' })
+-  expect(process.env.GIT_AUTHOR_NAME).toBeUndefined()
+-  expect(process.env.PATH?.split(':')[0]).toBe(bin)
++  const worker = subprocess.spawn.mock.calls.map(([spec]) => spec as { env?: Record<string, string> })
++    .find(spec => spec.env?.GIT_CONFIG_GLOBAL === workerGitConfig(directory) && spec.env?.PATH?.startsWith(`${bin}:`))!
++  expect(worker.env).toMatchObject({ GIT_CONFIG_GLOBAL: workerGitConfig(directory), GIT_CONFIG_NOSYSTEM: '1' })
++  expect(worker.env?.GIT_AUTHOR_NAME).toBeUndefined()
++  expect(worker.env?.PATH?.split(':')[0]).toBe(bin)
++  expect(process.env.GIT_CONFIG_GLOBAL).toBeUndefined()
++  expect(process.env.PATH?.split(':')).not.toContain(bin)
+   await next.stop()
+   expect(process.env.GIT_CONFIG_GLOBAL).toBeUndefined()
+   expect(process.env.PATH?.split(':')).not.toContain(bin)
+@@ -1794,3 +1802,21 @@ it('keeps the Policy the main Session judges by in its prompt, after admission a
+   expect(policy()).toContain('No rule is enabled: a proactive candidate can only be ignored.')
+   expect(policy()).toContain('The accept mode and the rules decide proactive candidates only')
+ })
++
++it('archives only orphan Sessions inside the managed workspace roots at reconciliation', async () => {
++  const stale = join(directory, 'work', 'deleted-ticket')
++  workspaceRegistry.list = () => [
++    { id: 'workspace-master', path: directory, sessionIds: [runtime.masterId] },
++    { id: 'workspace-stale', path: stale, sessionIds: ['worker-deleted', 'orchestrator-stale'] },
++    { id: 'workspace-user', path: join(tmpdir(), 'unmanaged-session-workspace'), sessionIds: ['session-user'] },
++  ]
++  const actions = await runtime.sessions.reconcile()
++  expect(actions.map(action => action.sessionId)).toEqual(['worker-deleted', 'orchestrator-stale'])
++  expect(workspaceRegistry.archiveSession.mock.calls).toEqual([
++    ['worker-deleted', { stopActivity: true }],
++    ['orchestrator-stale', { stopActivity: true }],
++  ])
++  // The orchestrator stays visible; a Session in a workspace outside the roots is not ours to archive.
++  expect(workspaceRegistry.archiveSession).not.toHaveBeenCalledWith(runtime.masterId, expect.anything())
++  expect(workspaceRegistry.archiveSession).not.toHaveBeenCalledWith('session-user', expect.anything())
++})
+diff --git a/tests/session-policy.spec.ts b/tests/session-policy.spec.ts
+new file mode 100644
+index 0000000..e4207c8
+--- /dev/null
++++ b/tests/session-policy.spec.ts
+@@ -0,0 +1,26 @@
++/** Session policy: the exact Session set dsh-superagent owns, and workspace-root containment for reconciliation. */
++import { join } from 'node:path'
++import { describe, expect, it } from 'vitest'
++import { managedSessionIds, withinAnyRoot, withinRoot } from '../src/app/session-policy.ts'
++
++describe('session policy', () => {
++  it('owns one orchestrator Session and exactly one worker Session per Ticket', () => {
++    expect(managedSessionIds('orchestrator-abc', [{ id: 't1' }, { id: 't2' }]))
++      .toEqual(['orchestrator-abc', 'worker-t1', 'worker-t2'])
++  })
++
++  it('does not duplicate a worker when the same Ticket is listed once', () => {
++    const ids = managedSessionIds('orchestrator-abc', [{ id: 't1' }])
++    expect(new Set(ids).size).toBe(ids.length)
++    expect(ids.filter(id => id === 'worker-t1')).toHaveLength(1)
++  })
++
++  it('contains a root itself and descendants but not siblings or parent paths', () => {
++    const root = join('/tmp', 'state', 'work')
++    expect(withinRoot(root, root)).toBe(true)
++    expect(withinRoot(root, join(root, 'ticket-1'))).toBe(true)
++    expect(withinRoot(root, join('/tmp', 'state', 'work-other'))).toBe(false)
++    expect(withinRoot(root, join('/tmp', 'state'))).toBe(false)
++    expect(withinAnyRoot([root, '/tmp/state'], join('/tmp/state', 'ticket-2'))).toBe(true)
++  })
++})
+diff --git a/tsdown.config.ts b/tsdown.config.ts
+index 0aabd00..e5b6e74 100644
+--- a/tsdown.config.ts
++++ b/tsdown.config.ts
+@@ -7,7 +7,7 @@ const raw = { name: 'raw',
+   load: (id: string) => id.endsWith('?raw') ? { code: `export default ${JSON.stringify(readFileSync(id.slice(0, -4), 'utf8'))}`, moduleType: 'js' as const }
+     : undefined }
+ export default defineConfig([
+-  { entry: { index: 'src/index.ts', 'github-watch': 'src/sources/github.ts', 'feishu-watch': 'src/sources/feishu.ts' }, outDir: 'lib', format: 'esm', fixedExtension: false, platform: 'node', target: 'es2024', dts: true, clean: true, deps: { neverBundle: [/^@deepseek-ai\//, 'zod', 'proper-lockfile'] } },
++  { entry: { index: 'src/index.ts', 'github-watch': 'src/sources/github.ts', 'feishu-watch': 'src/sources/feishu.ts', 'worker-shell-env': 'src/worker-shell-env.ts' }, outDir: 'lib', format: 'esm', fixedExtension: false, platform: 'node', target: 'es2024', dts: true, clean: true, deps: { neverBundle: [/^@deepseek-ai\//, 'zod', 'proper-lockfile'] } },
+   { entry: { client: 'src/client/index.tsx' }, outDir: 'lib', format: 'cjs', platform: 'browser', dts: false, clean: false, plugins: [raw],
+     deps: { neverBundle: ['react', 'react/jsx-runtime', 'react-dom'] },
+     outputOptions: { entryFileNames: 'client.js', banner: 'window.__ModuleLoader__.load({ id: "dsh-superagent", factory: (require) => {', footer: 'return module.exports; } });', intro: 'var module = { exports: {} }; var exports = module.exports;' } },

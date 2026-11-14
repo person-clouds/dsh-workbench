@@ -1,0 +1,61 @@
+{
+  "name": "dsh-workbench",
+  "version": "0.2.0",
+  "type": "module",
+  "description": "DSH 统一工作台：工作区、仓库、文档、交付物，以及 SA 的配置与运行管理。",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "lib/tickets.js",
+    "lib/gitdata.js",
+    "lib/markdown.js",
+    "lib/repos.js",
+    "lib/workspaces.js",
+    "lib/retention.js",
+    "lib/sa.js",
+    "locale/zh.json",
+    "locale/en.json",
+    "icon.svg"
+  ],
+  "peerDependencies": {
+    "@deepseek-ai/schemastery": "*"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-layout"
+      ]
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/person-clouds/dsh-workbench.git"
+  },
+  "homepage": "https://github.com/person-clouds/dsh-workbench#readme",
+  "bugs": {
+    "url": "https://github.com/person-clouds/dsh-workbench/issues"
+  },
+  "keywords": [
+    "dsh-plugin",
+    "dsh",
+    "workbench",
+    "superagent",
+    "tickets"
+  ],
+  "engines": {
+    "node": ">=22.5.0"
+  }
+}
