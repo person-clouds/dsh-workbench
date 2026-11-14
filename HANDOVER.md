@@ -61,6 +61,12 @@ git apply       /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-super
 git apply --check /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-superagent-defer-ready.patch
 git apply       /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-superagent-defer-ready.patch
 
+# 2026-11-15 追加：修复 Feishu 事件消费的 health 状态竞争。
+# stderr 的 [event] ready 与 stdout 的畸形事件行来自两个独立管道；
+# ready 晚到时会覆盖已报告的 JSON 错误，导致测试偶发失败。保持本次进程的首个错误不降级。
+git apply --check /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-superagent-feishu-health-race.patch
+git apply       /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-superagent-feishu-health-race.patch
+
 # 补丁不新增依赖，但保险起见：
 pnpm install
 pnpm typecheck

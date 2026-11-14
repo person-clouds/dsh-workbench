@@ -67,6 +67,17 @@
 - [x] `AGENTS.md` §6.8 与 `doc/task-workflow.md` 增补「连续 10 步无新增证据 →
       先写 STATUS 交接 → 换新会话；`session_depth` 最多 2 层，到顶停止」。
 
+### 2026-11-15 `pnpm test` 单例失败：Feishu health 竞争
+
+- 现象：60 文件中仅 `tests/sources.spec.ts` 的 malformed line 用例失败；
+  期望 `health.feishu.state == "error"`，实际被晚到的 `[event] ready` 覆盖为 `ready`。
+- 根因：`consume()` 的 stdout/stderr 是两个独立管道，事件顺序不保证；
+  malformed JSON 已在 stdout 链上报错后，stderr 的 ready 仍可能后到并覆盖。
+- 修复：新增增量补丁
+  [`handover/dsh-superagent-feishu-health-race.patch`](handover/dsh-superagent-feishu-health-race.patch)，
+  在单次 consumer 生命周期内保留首个错误；ready 仅在尚未失败时上报。
+- 这是既有竞态，不是 `dsh-superagent-defer-ready.patch` 引入；两个补丁需一起应用后再跑全量测试。
+
 ## 待本机执行（沙箱只读，无法代做）
 
 1. 按 `HANDOVER.md` §1 应用 `dsh-superagent-defer-ready.patch`，执行
