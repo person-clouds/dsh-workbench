@@ -91,6 +91,14 @@
   自身的 bundle 跳过、loopback、锁、导入失败，并打印命中行后再诊断/回滚。
 - 回滚结果正常：`3082=1，3080(401)=1`。
 
+### 2026-11-15 第二次 `--apply` 回滚：`fatal_log` 在无匹配时触发 `set -e`
+
+- 现象：服务刚启动、日志尚无目标 bundle 错误，脚本约 3 秒后退出并回滚。
+- 根因：`FATAL=$(fatal_log "$LOG")` 中，grep 无匹配返回 1；在 `set -e` 下
+  命令替换的退出码会使整个脚本退出。
+- 修复：`fatal_log()` 末尾加 `|| true`，保证无致命错误时返回 0；
+  已用 `bash -c 'set -euo pipefail; f(){ grep ... || true; }; X=$(f); echo ok'` 验证。
+
 ## 待本机执行（沙箱只读，无法代做）
 
 1. 按 `HANDOVER.md` §1 应用 `dsh-superagent-defer-ready.patch`，执行

@@ -138,7 +138,9 @@ NODE
 # profile 里其他插件的 failed to import（如既有的 dsh-context-guard 缺包）是独立警告，
 # 不能因为一条泛化的 "failed to import" 就中止切换。
 fatal_log() {
-  grep -E 'skipping profile bundle "(dsh-workbench|dsh-superagent)"|requires a loopback Web server|Lock file is already being held|dsh-superagent failed to start|(dsh-workbench|dsh-superagent).*failed to import|failed to import.*(dsh-workbench|dsh-superagent)' <<<"$1"
+  # 必须始终返回 0：调用方在 set -e 下用 FATAL=$(fatal_log ...) 取值，
+  # grep 无匹配返回 1 会让脚本在“没有致命错误”时直接退出。
+  grep -E 'skipping profile bundle "(dsh-workbench|dsh-superagent)"|requires a loopback Web server|Lock file is already being held|dsh-superagent failed to start|(dsh-workbench|dsh-superagent).*failed to import|failed to import.*(dsh-workbench|dsh-superagent)' <<<"$1" || true
 }
 
 collect_diagnostics() {
