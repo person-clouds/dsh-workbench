@@ -111,6 +111,12 @@ bash task/dsh-workbench/handover/switch-single-host.sh --apply --keep
 bash task/dsh-workbench/handover/switch-single-host.sh --apply --debug
 ```
 
+> 禁止跳过 `--self-test` 与 mock 回归直接 `--apply`。
+> 若 `--apply` 失败：先看失败发生在备份/安装/启动/token/HTTP/WS/SSE 哪一阶段及耗时；
+> diagnostics 里没有业务错误时，优先怀疑 `set -e`/`pipefail`/命令替换提前退出。
+> 同一类失败第二次出现时停止逐行试补丁，先补 self-test/mock 覆盖再上机
+> （规则见 `AGENTS.md` §6.9）。
+
 脚本按以下顺序执行，任一步失败会**先打印完整 journal 与定向诊断**，再自动恢复
 web profile 并启动旧的 dsh-superagent.service + dsh-web.service：
 
