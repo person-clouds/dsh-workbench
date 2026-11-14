@@ -357,7 +357,9 @@ for i in $(seq 1 60); do
     say "$FATAL" >&2
     die "启动日志出现致命错误（见上方匹配行与下方完整诊断）"
   fi
-  TOKEN_URL=$(grep -E '^dsh web: https?://' <<<"$LOG" | tail -1 | sed 's/^dsh web: //')
+  # 首轮 journal 可能只有 systemd 启动行；pipefail 下 grep 无匹配返回 1，
+  # 必须 || true，否则 set -e 会在“还没打印 token”时直接退出。
+  TOKEN_URL=$(grep -E '^dsh web: https?://' <<<"$LOG" | tail -1 | sed 's/^dsh web: //' || true)
   [[ -n "$TOKEN_URL" ]] && break
   sleep 1
 done

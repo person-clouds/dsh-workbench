@@ -99,6 +99,14 @@
 - 修复：`fatal_log()` 末尾加 `|| true`，保证无致命错误时返回 0；
   已用 `bash -c 'set -euo pipefail; f(){ grep ... || true; }; X=$(f); echo ok'` 验证。
 
+### 2026-11-15 第三次 `--apply` 回滚：token 提取管道触发 `set -e`
+
+- 现象：服务刚启动、journal 尚未打印 `dsh web: ...?token=`，脚本约 3 秒后回滚。
+- 根因：`TOKEN_URL=$(grep ... | tail -1 | sed ...)`；`set -o pipefail` 下
+  首轮 grep 无匹配返回 1，整个命令替换失败，`set -e` 直接退出。
+- 修复：提取管道末尾加 `|| true`，让轮询在无 token 时正常 sleep 重试。
+- 同类隐患已全量排查：其余 `grep` 均在 `if` / `|| die` / `|| true` 中。
+
 ## 待本机执行（沙箱只读，无法代做）
 
 1. 按 `HANDOVER.md` §1 应用 `dsh-superagent-defer-ready.patch`，执行
