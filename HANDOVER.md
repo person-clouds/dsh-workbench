@@ -164,6 +164,19 @@ ss -ltnp 2>/dev/null | grep ':3082' && echo '仍有 3082 监听，停止切换' 
 
 ## 4. 验证
 
+> **访问地址**：`dsh-web` 只监听 `127.0.0.1:3080`，对外用 Tailscale
+> `https://zh-gem-r7.tailb6e152.ts.net:8443/`。不要访问
+> `http://192.168.31.244:8080`——那是 Nextcloud（Apache/PHP），不是 DSH。
+> 若在该地址看到 DSH 界面，是浏览器缓存了旧页面：清掉该站点的 Service Worker/
+> 缓存，或直接用无痕窗口打开正确地址。
+
+先取当前登录 URL：
+
+```bash
+journalctl --user -u dsh-web.service -o cat --since '10 min ago' \
+  | grep -E '^dsh web: https?://' | tail -1
+```
+
 ```bash
 # 无登录态应为 401；说明路由已注册且鉴权生效
 curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3080/dsh-workbench/api
