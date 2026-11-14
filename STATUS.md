@@ -144,9 +144,11 @@
 - [ ] 执行 `retention-dry-run.sh`，确认结果后再执行
       `enable-retention-auto-cleanup.sh --apply`。
 
-> 已知非阻塞项：profile 内 `dsh-compaction-archive` 链接指向不存在的
-> `task/dsh-compaction-archive`，可用性检查因此返回 2；不影响 workbench/SA。
-> 需在宿主机移除该依赖/链接，或恢复目标目录。
+> 已知非阻塞项：profile 内 `dsh-compaction-archive` 链接指向已改名的旧目录
+> `task/dsh-compaction-archive`（现为 `dsh-context-guard`），可用性检查因此返回 2。
+> 新增 `dsh-usability-check/scripts/clean-dangling-profile-links.sh`：
+> 默认预览，`--apply` 只删除悬空软链接并写
+> `~/.dsh/state/workbench/profile-link-cleanup.log`；目标目录/正常文件不受影响。
 
 ### 2026-11-15 工作台 SA 管理接口返回 `Authentication required`
 
