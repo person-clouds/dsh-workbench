@@ -1,6 +1,6 @@
 # STATUS — DSH 工作台
 
-- 更新时间：2026-11-15
+- 更新时间：2026-11-15（切换脚本加固）
 - 一句话：DSH 单 Host 下的统一工作台。面板覆盖工作区、仓库、文档、工单和 SA 控制；
   SA 管理写操作统一走 `/orchestrator/api/*` 代理，60 天保留与清理有 dry-run 和逐项安全检查。
 - 位置：`task/dsh-workbench/`；包名 `dsh-workbench@0.2.0`。
@@ -30,17 +30,55 @@
       `DSH_DISABLE_SUPERAGENT=1` 安全模式、SA 管理 API 使用 DSH Connection 鉴权。该补丁在 `/tmp/dsh-sa-patch` 草案中通过
       `tsc --noEmit`、`vitest`（60 文件 / 1203 用例）与 `tsdown` 构建。
 
+## 2026-11-15 切换脚本加固（已完成代码侧）
+
+`handover/switch-single-host.sh` 已补齐 STATUS 上一轮列出的 5 项：
+
+- [x] 预检延迟启动修复：`src/index.ts` 必须含 `void runtime.ready.then`，
+      `lib/index.js` 必须含 `runtime.ready.then`；缺任一项直接拒绝 apply。
+- [x] 就绪判断改为 HTTP：登录后轮询 `GET /dsh-workbench/api` 与
+      `GET /orchestrator/api/state`，接受 `health.runtime.state == "ready"` 或
+      `setup.problem != null`；不再 grep `dsh-superagent ready`。
+- [x] 失败时输出完整 journal + 定向诊断，写入
+      `~/.dsh/backups/dsh-workbench-*/diagnostics-*.log`：systemd 状态、端口、
+      HTTP 探测、SA state、profile package 与 bundle 解析、关键字日志。
+- [x] 回滚安装前清理备份中悬空的 `dsh-superagent-workbench` 依赖、bundle 与
+      node_modules 链接，避免再次 `cannot resolve profile bundle`。
+- [x] 新增 `--keep`（失败不回滚、保留现场）与 `--debug`（bash -x、保留临时文件；
+      trace 可能含 token）。
+
+> 当前 `/home/zh/src/dsh-superagent` 仍**未应用** `dsh-superagent-defer-ready.patch`，
+> 所以本机 `switch-single-host.sh --dry-run` 会按设计停在预检；先按 HANDOVER §1
+> 应用增量补丁并 `pnpm build`，再执行切换。
+
+## 2026-11-15 DSH 可用性检查 skill 与浏览器噪声定位
+
+- [x] 新增 workspace skill `.dsh/skills/dsh-usability-check/SKILL.md` 与
+      `scripts/check.sh`：核心检查 HTTP 入口、token 登录、`/api/remote.mux` 101、
+      `/plugins/events` SSE graph；扩展检查 `/dsh-workbench/api`、SA `/orchestrator/api/state`、
+      profile bundle 解析与悬空 node_modules 链接。退出码 `0` 可用 / `1` 核心失败 /
+      `2` 仅扩展失败。
+- [x] 已在本机实测：核心链路 6 项通过；`/dsh-workbench/api` 与 `/orchestrator/api/state`
+      均 404（单 Host 切换尚未执行），skill 正确返回 2。
+- [x] 定位浏览器控制台 `client.js:3229 WebSocket to ws://127.0.0.1:9230/ingest failed`：
+      来源是 `@deepseek-ai/dsh-experimental-inspector-profile`。其 Client bootstrap 只接受
+      `ws://127.0.0.1` 端点，远端浏览器必然连到自己的 loopback；不影响业务。处理方式：
+      正常使用移除该 bundle，调试时临时启用并用本机浏览器。
+- [x] `AGENTS.md` §6.8 与 `doc/task-workflow.md` 增补「连续 10 步无新增证据 →
+      先写 STATUS 交接 → 换新会话；`session_depth` 最多 2 层，到顶停止」。
+
 ## 待本机执行（沙箱只读，无法代做）
 
-1. 按 `HANDOVER.md` §1 应用 SA 源码补丁，执行 `pnpm typecheck && pnpm test && pnpm build`；
-2. 运行 `bash task/dsh-workbench/handover/switch-single-host.sh --apply`：
-   备份、停两个 Host、改 `web` profile、安装依赖、启动并验证登录/WS/SSE；
+1. 按 `HANDOVER.md` §1 应用 `dsh-superagent-defer-ready.patch`，执行
+   `pnpm typecheck && pnpm test && pnpm build`；
+2. 运行 `bash task/dsh-workbench/handover/switch-single-host.sh --dry-run` 预检通过后，
+   执行 `--apply`：备份、停两个 Host、改 `web` profile、安装依赖、启动并验证登录/WS/SSE；
 3. 用浏览器核对 5 个标签页、SA 写操作、归档/清理 dry-run；
 4. dry-run 通过后再把 `retentionAutoCleanup` 改为 `true`。
 
-> 2026-11-15 复核：本机 `dsh-superagent` 源码目前**尚未应用**补丁
-> （无 `lib/worker-shell-env.js`，`git apply --check -R` 失败），所以之前若只做
-> 「步骤 2」必然缺新构建产物。切换脚本已在启动前强制检查该前提。
+> 2026-11-15 复核：`dsh-superagent-single-host.patch` 已应用且
+> `lib/worker-shell-env.js` 已构建；但 `src/index.ts` 仍是 `await runtime.ready`，
+> `dsh-superagent-defer-ready.patch` 尚未应用。切换脚本已在启动前强制检查该前提。
 
 ## 2026-11-15 单 Host 切换失败：根因与修复（已证实）
 
