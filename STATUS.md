@@ -162,6 +162,18 @@
   与浏览器一致，已验证 PASS。
 - 生效方式：重启 `dsh-web.service` 后浏览器硬刷新。
 
+## 2026-11-15 自动清理“配置已开但运行仍关闭”
+
+- 现象：`enable-retention-auto-cleanup.sh` 报“已经开启”，但 dry-run 仍显示
+  “自动清理: 关闭”。
+- 根因：配置 `cordis.patch.yml` 已改为 `true`，但运行台账
+  `~/.dsh/state/workbench/retention.json` 里仍是之前 dry-run 落下的
+  `settings.autoCleanup: false`；工作台运行开关以台账为准。
+- 修复：开关脚本 `--apply` 同时改配置和台账，分别备份并写审计；预览会明确
+  显示 `config=... manifest=...`。
+- 回归：`test-retention-scripts.sh` 覆盖“配置 false+台账 false”和
+  “配置 true+台账 false”两种情况，打印 PASS。
+
 ## 待本机执行（切换后）
 
 1. 用浏览器核对 5 个标签页、SA 写操作、归档/清理 dry-run；

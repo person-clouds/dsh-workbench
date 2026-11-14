@@ -299,8 +299,16 @@ timeout 8 curl -sS --noproxy '*' -b "$JAR" -N "$BASE/plugins/events" | head -c 1
 - [保留策略] dry-run 返回候选与逐项检查；
 - `ss -ltnp | grep :3082` 无输出。
 
-确认 dry-run 结果符合预期后，再把 `web/cordis.patch.yml` 的
-`retentionAutoCleanup` 改为 `true` 并重启 `dsh-web`；自动清理每 24 小时最多一次。
+确认 dry-run 结果符合预期后，执行开关脚本；它会同时改
+`web/cordis.patch.yml` 和运行台账 `retention.json`，备份后重启 `dsh-web`：
+
+```bash
+bash task/dsh-workbench/handover/enable-retention-auto-cleanup.sh
+bash task/dsh-workbench/handover/enable-retention-auto-cleanup.sh --apply
+```
+
+自动清理每 24 小时最多一次。只改 `cordis.patch.yml` 不够：台账已存在时，
+运行开关以 `retention.json` 的 `settings.autoCleanup` 为准。
 
 若页面仍表现为「一直连接中、工作区空了、插件空了」，先抓这两条客户端通道，
 不要只看静态首页：

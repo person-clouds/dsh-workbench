@@ -82,6 +82,9 @@ DSH 工作区会自动出现在仓库列表中，不再读取 `superagent-consol
 - 先 `git worktree remove`，再删 DSH 工作区注册；DSH session 日志永不删除；
 - 支持面板内 dry-run；自动清理每 24 小时最多一次，结果写入
   `~/.dsh/state/workbench/retention.json`；
+- `cordis.patch.yml` 的 `retentionAutoCleanup` 是初始值；`retention.json`
+  已存在时，运行开关以台账里的 `settings.autoCleanup` 为准。开启请用
+  `handover/enable-retention-auto-cleanup.sh --apply`，脚本会同步配置和台账；
 - 任何一项检查失败都保留现场并记录原因，不提供 `rm -rf` 兜底。
 
 ## 安全边界
