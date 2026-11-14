@@ -118,6 +118,17 @@
   不接触宿主机服务或真实 profile。
 - `HANDOVER.md` §2 执行顺序改为 `--self-test` → mock 回归 → `--dry-run` → `--apply`。
 
+### 2026-11-15 第四次 `--apply` 回滚：SA 管理 API 缺少 `x-orchestrator-request: 1`
+
+- 现象：workbench API=200，但 `GET /orchestrator/api/state` 返回 403，
+  body 为 `{"error":"Same-origin management request required"}`。
+- 根因：SA 在 `src/app/http.ts` 中除同源登录态外，还要求
+  `x-orchestrator-request: 1` 才接受管理 API；脚本与可用性检查都只带了 cookie。
+- 修复（全量同类点）：切换脚本两处探测、`dsh-usability-check/scripts/check.sh`、
+  HANDOVER 手工复核命令全部补该 header；mock 测试的 cURL 桩现在对缺失 header
+  返回 403，防止回归。
+- 验证：`--self-test`、mock 全路径回归、`bash -n` 均通过。
+
 ## 待本机执行（沙箱只读，无法代做）
 
 1. 按 `HANDOVER.md` §1 应用 `dsh-superagent-defer-ready.patch`，执行

@@ -176,7 +176,8 @@ systemctl --user start dsh-web.service
 # 或 setup.problem != null 视为等待设置
 curl -sS --noproxy '*' -b "$JAR" -o /dev/null -w 'workbench %{http_code}\n' \
   http://192.168.31.244:8080/dsh-workbench/api
-curl -sS --noproxy '*' -b "$JAR" http://192.168.31.244:8080/orchestrator/api/state
+curl -sS --noproxy '*' -b "$JAR" -H 'x-orchestrator-request: 1' \
+  http://192.168.31.244:8080/orchestrator/api/state
 
 journalctl --user -u dsh-web.service -n 200 --no-pager \
   | grep -E 'skipping profile bundle|requires a loopback Web server|Lock file is already being held|failed to import|dsh-workbench'

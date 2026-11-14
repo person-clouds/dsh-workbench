@@ -223,7 +223,7 @@ collect_diagnostics() {
       printf 'workbench/api = '
       curl -sS --noproxy '*' -b "$COOKIE_JAR" -o /dev/null -w '%{http_code}\n' --max-time 3 "$LAN_BASE/dsh-workbench/api" 2>&1 || true
       printf 'orchestrator/api/state = '
-      curl -sS --noproxy '*' -b "$COOKIE_JAR" -o /dev/null -w '%{http_code}\n' --max-time 3 "$LAN_BASE/orchestrator/api/state" 2>&1 || true
+      curl -sS --noproxy '*' -b "$COOKIE_JAR" -H 'x-orchestrator-request: 1' -o /dev/null -w '%{http_code}\n' --max-time 3 "$LAN_BASE/orchestrator/api/state" 2>&1 || true
     fi
     echo
     echo "=== SA /state 最近响应 ==="
@@ -423,7 +423,8 @@ WB_CODE=000
 SA_CODE=000
 for i in $(seq 1 120); do
   WB_CODE=$(curl -sS --noproxy '*' -b "$COOKIE_JAR" -o /dev/null -w '%{http_code}' --max-time 3 "$LAN_BASE/dsh-workbench/api" 2>/dev/null || true)
-  SA_CODE=$(curl -sS --noproxy '*' -b "$COOKIE_JAR" -o "$STATE_FILE" -w '%{http_code}' --max-time 3 "$LAN_BASE/orchestrator/api/state" 2>/dev/null || true)
+  # SA 管理 API 除了同源登录态，还要求 x-orchestrator-request: 1（见 SA src/app/http.ts）。
+  SA_CODE=$(curl -sS --noproxy '*' -b "$COOKIE_JAR" -H 'x-orchestrator-request: 1' -o "$STATE_FILE" -w '%{http_code}' --max-time 3 "$LAN_BASE/orchestrator/api/state" 2>/dev/null || true)
   if [[ "$WB_CODE" == 200 && "$SA_CODE" == 200 && -s "$STATE_FILE" ]]; then
     SA_KIND=$(node -e '
       const d = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"))

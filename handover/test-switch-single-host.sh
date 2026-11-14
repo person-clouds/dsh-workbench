@@ -59,6 +59,7 @@ cat > "$BIN/curl" <<'PY'
 import sys
 args = sys.argv[1:]
 out = None; hdr = None; writefmt = None; url = None; has_cookie = False
+has_orch_header = 'x-orchestrator-request: 1' in args
 i = 0
 while i < len(args):
     a = args[i]
@@ -80,10 +81,15 @@ if url and 'plugins/events' in url:
 
 if url and 'token=' in url:
     code = '303'
-elif url and ('dsh-workbench/api' in url or 'orchestrator/api/state' in url):
+elif url and 'orchestrator/api/state' in url:
+    if not has_orch_header:
+        code = '403'
+    else:
+        code = '200'
+        if out and out != '/dev/null':
+            open(out, 'w').write('{"health":{"runtime":{"state":"ready"}}}\n')
+elif url and 'dsh-workbench/api' in url:
     code = '200'
-    if 'orchestrator/api/state' in url and out and out != '/dev/null':
-        open(out, 'w').write('{"health":{"runtime":{"state":"ready"}}}\n')
 elif url and url.rstrip('/').endswith(':3080'):
     code = '200' if has_cookie else '401'
 else:
