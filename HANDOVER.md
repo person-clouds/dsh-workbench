@@ -66,90 +66,98 @@ test -f lib/worker-shell-env.js && echo 'worker-shell-env built'
 若 `git apply --check` 因并行改动失败，先停下来，把冲突文件与补丁发回；
 不要在未确认时 reset/checkout 掉既有改动。
 
-## 2. 修改 web profile
+## 2. 修改 web profile（推荐用脚本一次完成）
 
-先停两个 Host。顺序重要：旧 `dsh-superagent.service` 持有
-`~/.dsh/state/superagent` 的进程锁，必须先停它，否则 `web` 里的 SA 插件会启动失败：
+> 第 1 步必须**真的执行并构建**。先确认补丁已应用：
+>
+> ```bash
+> cd /home/zh/src/dsh-superagent
+> git apply --check -R /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-superagent-single-host.patch \
+>   && echo 'SA 补丁已应用'
+> test -f lib/worker-shell-env.js && echo 'worker-shell-env 已构建'
+> ```
+>
+> 若没有输出「已应用 / 已构建」，不要进入第 2 步；先回到 §1。
+
+推荐直接运行脚本（默认 dry-run；`--apply` 才会停 Host、改 profile 并启动）：
+
+```bash
+cd /home/zh/www/personalCloud
+bash task/dsh-workbench/handover/switch-single-host.sh --apply
+```
+
+脚本按以下顺序执行，任一步失败会**自动恢复 web profile 并启动旧的
+dsh-superagent.service + dsh-web.service**：
+
+1. 备份 `web`/`superagent` profile、SQLite、两个 systemd unit；
+2. 停 `dsh-web`，再停 `dsh-superagent`，确认 3080/3082 已释放；
+3. 从 `web/package.json` 删除悬空的 `dsh-superagent-workbench`，加入
+   `dsh-workbench`、`dsh-superagent` 两个 `link:` 依赖与 bundle；
+4. 向 `web/cordis.patch.yml` 幂等追加 SA 配置与 `retentionAutoCleanup: false`；
+5. `dsh plugin --profile web install`，并在启动前用 `import.meta.resolve`
+   证明两个 bundle 均可解析，防止再次出现 `skipping profile bundle`；
+6. 启动 `dsh-web.service`，等待 `dsh-workbench ready:` 与
+   `dsh-superagent ready`（或 `waiting for setup`）；
+7. 用本次启动打印的 token 在局域网入口验证登录、`/dsh-workbench/api`、
+   `/api/remote.mux` WebSocket 101、`/plugins/events` SSE graph 四条链路；
+8. 全部通过后 `systemctl --user disable dsh-superagent.service`，保留 unit 文件作回滚。
+
+手工操作时对应命令如下（不推荐；脚本已包含全部校验）：
 
 ```bash
 systemctl --user stop dsh-web.service
 systemctl --user stop dsh-superagent.service
 ss -ltnp 2>/dev/null | grep -E ':3080|:3082' || echo '两个 Host 均已停止'
+
+# 编辑 ~/.dsh/profiles/web/package.json：
+#   dependencies 删除 dsh-superagent-workbench，
+#   加入 dsh-workbench / dsh-superagent 两个 link: 依赖；
+#   dsh.profile.bundles 删除 dsh-superagent-workbench，
+#   在 @deepseek-ai/dsh-web-app 之后加入 dsh-superagent、dsh-workbench。
+
+# ~/.dsh/profiles/web/cordis.patch.yml 末尾追加：
+# - id: dsh-superagent
+#   config:
+#     stateDir: /home/zh/.dsh/state/superagent
+# - id: dsh-superagent-feishu
+#   disabled: false
+# - id: dsh-workbench
+#   config:
+#     retentionAutoCleanup: false
+
+cd "$HOME/.dsh/profiles/web"
+dsh plugin --profile web install
+# 必须能解析，否则启动后只会打印 skipping profile bundle：
+node --input-type=module -e "console.log(import.meta.resolve('dsh-workbench')); console.log(import.meta.resolve('dsh-superagent'))"
+systemctl --user start dsh-web.service
 ```
 
-编辑 `~/.dsh/profiles/web/package.json`：
-
-```json
-{
-  "dependencies": {
-    "dsh-workbench": "link:/home/zh/www/personalCloud/task/dsh-workbench",
-    "dsh-superagent": "link:/home/zh/src/dsh-superagent"
-  },
-  "dsh": {
-    "profile": {
-      "bundles": [
-        "@deepseek-ai/dsh-base",
-        "@deepseek-ai/dsh-web-app",
-        "dsh-superagent",
-        "dsh-workbench"
-      ]
-    }
-  }
-}
-```
-
-保留其他依赖与 bundle；只把旧的 `dsh-superagent-workbench` 替换为
-`dsh-workbench`，并在它前面加 `dsh-superagent`。
-
-在 `~/.dsh/profiles/web/cordis.patch.yml` 末尾追加：
-
-```yaml
-# dsh-superagent 机器配置：与旧 superagent profile 保持一致。
-- id: dsh-superagent
-  config:
-    stateDir: /home/zh/.dsh/state/superagent
-- id: dsh-superagent-feishu
-  disabled: false
-```
-
-首次切换建议先关闭自动清理，人工 dry-run 确认后再启用。在
-`~/.dsh/profiles/web/cordis.patch.yml` 的 `dsh-workbench` 行下加：
-
-```yaml
-- id: dsh-workbench
-  config:
-    retentionAutoCleanup: false
-```
-
-然后安装依赖并启动：
+启动后先看日志，不要只看浏览器：
 
 ```bash
-cd "$HOME/.dsh/profiles/web"
-dsh plugin --profile web install   # 或 pnpm install；让 link: 依赖进入 node_modules
-systemctl --user start dsh-web.service
-journalctl --user -u dsh-web.service -n 120 --no-pager
+journalctl --user -u dsh-web.service -n 200 --no-pager \
+  | grep -E 'dsh-workbench ready:|dsh-superagent (ready|is waiting for setup)|skipping profile bundle|requires a loopback Web server|Lock file is already being held|failed to import'
 ```
 
-预期日志出现 `dsh-workbench ready:` 与 `dsh-superagent ready`（或
-`dsh-superagent is waiting for setup`）。若出现 `import failed` / `did not activate`，
-先查该插件目录的 `node_modules/@deepseek-ai/schemastery` 是否存在。
+| 日志 | 判定 |
+|---|---|
+| `dsh-workbench ready:` | 工作台 Host 路由已注册 |
+| `dsh-superagent ready` 或 `is waiting for setup` | SA 插件已接管状态目录 |
+| `skipping profile bundle "dsh-workbench"` / `"dsh-superagent"` | 失败：依赖没进 `node_modules`，重跑 `dsh plugin --profile web install` |
+| `requires a loopback Web server` | 失败：SA 补丁没应用或构建产物未更新 |
+| `Lock file is already being held` | 失败：旧 `dsh-superagent.service` 还在跑/未停干净 |
+| `failed to import` / 对应插件 `did not activate` | 失败：先查该插件目录依赖，不要继续刷新浏览器 |
 
-若浏览器报：
+浏览器侧若报：
 
-```
+```text
 dsh-workbench: Error: client-modules: could not load "dsh-workbench":
 plugins/??dsh-workbench/client.js&rev=...: loaded without registering
 ```
 
-按顺序检查：
-
-1. 打开新标签页并 `Ctrl+Shift+R` 强制刷新（旧页面会缓存失败的 bundle）；
-2. DevTools Console 是否有 `Uncaught SyntaxError`；
-3. 确认 `task/dsh-workbench/client.js` 顶层只有 `window.__ModuleLoader__.load({...})`，
-   `zh`/`en` 字典在 `factory` 内（0.2.0 已修；旧写法的顶层 `const` 在 HMR/重复加载时
-   会重声明失败）；
-4. 确认 `web` profile 的 `bundles` 已删除旧 `dsh-superagent-workbench`，没有两个工作台
-   bundle 同时入列。
+按顺序检查：新标签页 `Ctrl+Shift+R`；DevTools 是否有 `Uncaught SyntaxError`；
+`task/dsh-workbench/client.js` 顶层是否只有 `window.__ModuleLoader__.load({...})`
+（`zh`/`en` 必须在 `factory` 内）；`web` profile 是否同时列了两个 workbench bundle。
 
 ## 3. 确认停用第二个 Host 与 3082
 
@@ -162,41 +170,77 @@ ss -ltnp 2>/dev/null | grep ':3082' && echo '仍有 3082 监听，停止切换' 
 
 `superagent` profile 文件保留；以后要回滚可直接恢复 unit。
 
-## 4. 验证
+## 4. 验证与访问地址
 
-> **访问地址**：`dsh-web` 只监听 `127.0.0.1:3080`，对外用 Tailscale
-> `https://zh-gem-r7.tailb6e152.ts.net:8443/`。不要访问
-> `http://192.168.31.244:8080`——那是 Nextcloud（Apache/PHP），不是 DSH。
-> 若在该地址看到 DSH 界面，是浏览器缓存了旧页面：清掉该站点的 Service Worker/
-> 缓存，或直接用无痕窗口打开正确地址。
+> **事实校正**：
+>
+> - `http://192.168.31.244:8080` **就是 DSH 局域网入口**：
+>   `dsh-lan.socket` 在 `192.168.31.244:8080` 监听，经 `socket-proxyd` 转到
+>   `127.0.0.1:3080`。它不是 Nextcloud。
+> - `https://zh-gem-r7.tailb6e152.ts.net:8443/` 是同一个 DSH Host 的 Tailscale
+>   Serve 入口，只有 tailnet 设备可访问。当前用户设备访问不了时，请用局域网入口。
+> - DSH 登录 cookie 的名字由 **协议 + authority** 决定。`https://…:8443` 换到的
+>   cookie 不能用于 `http://192.168.31.244:8080`，反之亦然。拿到 journal 打印的
+>   `https://…:8443/?token=…` 后，若要在局域网入口登录，必须把 origin 换成
+>   `http://192.168.31.244:8080` 再打开。
+> - Nextcloud 只占 `127.0.0.1:8080` 和 `100.84.98.28:8080`；局域网 DSH 入口是
+>   `192.168.31.244:8080`，两者不是同一个监听地址。
 
-先取当前登录 URL：
+取当前登录 URL 并自动换成局域网 origin：
 
 ```bash
-journalctl --user -u dsh-web.service -o cat --since '10 min ago' \
-  | grep -E '^dsh web: https?://' | tail -1
+TOKEN_URL=$(journalctl --user -u dsh-web.service -o cat --since '10 min ago' \
+  | grep -E '^dsh web: https?://' | tail -1 | sed 's/^dsh web: //')
+LAN_URL=$(node -e '
+const u = new URL(process.argv[1]); u.protocol = "http:"; u.host = "192.168.31.244:8080";
+process.stdout.write(u.href)' "$TOKEN_URL")
+echo "$LAN_URL"
 ```
 
+把 `$LAN_URL` 在局域网浏览器打开。命令行自检：
+
 ```bash
-# 无登录态应为 401；说明路由已注册且鉴权生效
-curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3080/dsh-workbench/api
-
-# 浏览器登录后：
-#   - 侧栏出现「DSH 工作台」；
-#   - [工作区] 能看到当前 DSH 工作区与会话；
-#   - [工单] 能读 SA 工单；
-#   - [SA 控制] 能读 state/settings/prompts，保存一个无副作用设置后能恢复；
-#   - [保留策略] dry-run 返回候选与逐项检查；
-#   - 不再访问 3082。
-
-确认 dry-run 结果符合预期后，再把 `retentionAutoCleanup` 改回 `true` 并重启
-`dsh-web`；自动清理每 24 小时最多一次，且只处理通过全部检查的候选。
+BASE=http://192.168.31.244:8080
+JAR=$(mktemp)
+# 1) 无登录态：401（路由已注册且鉴权生效）
+curl -sS --noproxy '*' -o /dev/null -w 'anon root: %{http_code}\n' "$BASE/"
+# 2) token 交换：303 并写 cookie
+curl -sS --noproxy '*' -o /dev/null -c "$JAR" -w 'token exchange: %{http_code}\n' "$LAN_URL"
+# 3) 登录后：200
+curl -sS --noproxy '*' -b "$JAR" -o /dev/null -w 'logged-in root: %{http_code}\n' "$BASE/"
+# 4) 工作台路由：200
+curl -sS --noproxy '*' -b "$JAR" -o /dev/null -w 'workbench api: %{http_code}\n' "$BASE/dsh-workbench/api"
+# 5) WebSocket Upgrade：应看到 101 Switching Protocols（随后 curl 超时属正常）
+curl -sS --noproxy '*' --http1.1 --max-time 5 -D - -o /dev/null -b "$JAR" \
+  -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' \
+  -H 'Sec-WebSocket-Key: SGVsbG9Xb3JsZDEyMzQ1Ng==' "$BASE/api/remote.mux" 2>&1 \
+  | grep -E 'HTTP/1.1 101|Upgrade: websocket'
+# 6) SSE 插件图：应出现 : connected 与 "type":"graph"
+timeout 8 curl -sS --noproxy '*' -b "$JAR" -N "$BASE/plugins/events" | head -c 1200
 ```
 
-服务端还应确认：
+浏览器登录后逐项核对：
+
+- 侧栏出现「DSH 工作台」，5 个标签页可切换；
+- [工作区] 能看到当前 DSH 工作区与会话；
+- [工单] 能读 SA 工单；
+- [SA 控制] 能读 state/settings/prompts，保存一个无副作用设置后能恢复；
+- [保留策略] dry-run 返回候选与逐项检查；
+- `ss -ltnp | grep :3082` 无输出。
+
+确认 dry-run 结果符合预期后，再把 `web/cordis.patch.yml` 的
+`retentionAutoCleanup` 改为 `true` 并重启 `dsh-web`；自动清理每 24 小时最多一次。
+
+若页面仍表现为「一直连接中、工作区空了、插件空了」，先抓这两条客户端通道，
+不要只看静态首页：
 
 ```bash
-journalctl --user -u dsh-web.service -n 300 --no-pager | grep -E 'dsh-workbench|dsh-superagent|did not activate|import failed'
+# WebSocket 必须 101；401/404/连接重置都说明登录 origin 或代理有问题
+curl -sS --noproxy '*' --http1.1 --max-time 5 -D - -o /dev/null -b "$JAR" \
+  -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' \
+  -H 'Sec-WebSocket-Key: SGVsbG9Xb3JsZDEyMzQ1Ng==' "$BASE/api/remote.mux"
+# SSE 必须持续输出；若 404/断开，检查 dsh-lan.socket -> 127.0.0.1:3080
+timeout 8 curl -sS --noproxy '*' -b "$JAR" -N "$BASE/plugins/events"
 ```
 
 ## 5. 回滚

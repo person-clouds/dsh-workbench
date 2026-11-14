@@ -1,6 +1,6 @@
 # STATUS — DSH 工作台
 
-- 更新时间：2026-11-14
+- 更新时间：2026-11-15
 - 一句话：DSH 单 Host 下的统一工作台。面板覆盖工作区、仓库、文档、工单和 SA 控制；
   SA 管理写操作统一走 `/orchestrator/api/*` 代理，60 天保留与清理有 dry-run 和逐项安全检查。
 - 位置：`task/dsh-workbench/`；包名 `dsh-workbench@0.2.0`。
@@ -32,13 +32,15 @@
 
 ## 待本机执行（沙箱只读，无法代做）
 
-1. 备份 `~/.dsh/storages/workspace.json`、两个 profile 的 `package.json`/`cordis.patch.yml`
-   与两个 systemd unit；
-2. `web` profile 移除旧 `dsh-superagent-workbench` 链接，添加 `dsh-workbench` 与 `dsh-superagent`；
-3. 把 `superagent` profile 的 SA 配置迁到 `web` 的 `cordis.patch.yml`，停止并禁用
-   `dsh-superagent.service`，去掉 3082；
-4. 应用 SA 源码补丁，执行 `pnpm typecheck && pnpm test && pnpm build`，再重启 `dsh-web.service`；
-5. 用浏览器核对 5 个标签页、SA 写操作、归档/清理 dry-run。
+1. 按 `HANDOVER.md` §1 应用 SA 源码补丁，执行 `pnpm typecheck && pnpm test && pnpm build`；
+2. 运行 `bash task/dsh-workbench/handover/switch-single-host.sh --apply`：
+   备份、停两个 Host、改 `web` profile、安装依赖、启动并验证登录/WS/SSE；
+3. 用浏览器核对 5 个标签页、SA 写操作、归档/清理 dry-run；
+4. dry-run 通过后再把 `retentionAutoCleanup` 改为 `true`。
+
+> 2026-11-15 复核：本机 `dsh-superagent` 源码目前**尚未应用**补丁
+> （无 `lib/worker-shell-env.js`，`git apply --check -R` 失败），所以之前若只做
+> 「步骤 2」必然缺新构建产物。切换脚本已在启动前强制检查该前提。
 
 ## 关键验证记录
 
@@ -55,6 +57,11 @@
 
 ## 已知约束
 
+- 本机 DSH 有两个入口：`http://192.168.31.244:8080`（`dsh-lan.socket` → `127.0.0.1:3080`）
+  与 Tailnet `https://zh-gem-r7.tailb6e152.ts.net:8443/`。登录 cookie 按协议 + authority
+  绑定，两个 origin 的 cookie 不通用；journal 打印的 8443 token URL 不能直接登录 8080。
+- 切换后若浏览器「一直连接中、工作区/插件为空」，先验证 `/api/remote.mux` 为 101 与
+  `/plugins/events` 持续输出，不要只看静态首页；两者任一失败都会导致该症状。
 - `client.js` 是普通脚本，顶层不能出现 `import`/`export`，也不能放 `const`/`let`/`class`
   等顶层词法声明（HMR 重复加载会重声明失败）；顶层只允许 `window.__ModuleLoader__.load`。
   `zh`/`en` 字典在 `factory` 内联，需与 `locale/*.json` 同步。
