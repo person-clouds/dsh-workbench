@@ -1,12 +1,18 @@
 # STATUS — DSH 工作台
 
-- 更新时间：2026-11-16（列表规则强化：服务端分页、会话归档筛选、列表性能）
+- 更新时间：2026-11-16（仓库列表每页 4 条并按更新时间倒序）
 - 一句话：DSH 单 Host 下的统一工作台。面板覆盖工作区、仓库、文档、工单和 SA 控制；
   SA 控制直接切到 `dsh-superagent` 原生 main 面板，60 天保留与清理仍有 dry-run 和逐项安全检查。
 - 位置：`task/dsh-workbench/`；包名 `dsh-workbench@0.2.1`。
 - 计划：[`PLAN-dsh-workbench.md`](PLAN-dsh-workbench.md)、[`PLAN-sa-ui-migration.md`](PLAN-sa-ui-migration.md)。
 
-## 2026-11-16 最新：列表规则强化与性能优化
+## 2026-11-16 最新：仓库列表按更新时间倒序
+
+- [x] `view=repos` 默认每页 4 条，`updatedAt` 取仓库最新提交时间；非 git 目录回退到 mtime。
+- [x] 服务端先对全量仓库按 `updatedAt` 倒序稳定排序，再分页；前端仓库页同步传 `sort=updatedAt&dir=desc`，分页控件按每页 4 条计算。
+- [x] 校验：`node --check index.js/client.js/lib/*.js`、`node --test handover/test-workbench-repos.mjs handover/test-workbench-lists.mjs` 通过。
+
+## 2026-11-16 上一轮：列表规则强化与性能优化
 
 - [x] 新增 `lib/list.js` 统一列表参数：`offset/limit`（上限 50）、`total/hasMore`、
       归档筛选规范化、排序字段/方向白名单、唯一 id 稳定次级排序。

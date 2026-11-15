@@ -194,8 +194,15 @@ async function buildView(ctx, config, params, DatabaseSync) {
   }
   if (view === 'repos') {
     const repos = await loadRepos(config, workspaceRepos(ctx))
-    const page = listParams(params, { defaultLimit: 12, maxLimit: 50, defaultSort: 'name', allowedSorts: ['name', 'id', 'source'], defaultDir: 'asc' })
-    const ordered = sortBy(repos, page.sort, page.dir, (repo, field) => field === 'name' ? repo.name : field === 'source' ? repo.source : repo.id, repo => repo.id)
+    const page = listParams(params, { defaultLimit: 4, maxLimit: 50, defaultSort: 'updatedAt', allowedSorts: ['updatedAt', 'name', 'id', 'source'], defaultDir: 'desc' })
+    // 仓库更新时间取最新提交时间（非 git 目录回退到 mtime），先对全量排序再分页。
+    const overview = await reposOverview(repos)
+    const ordered = sortBy(overview, page.sort, page.dir, (repo, field) => {
+      if (field === 'updatedAt') return timeValue(repo.updatedAt)
+      if (field === 'name') return repo.name
+      if (field === 'source') return repo.source
+      return repo.id
+    }, repo => repo.id)
     const result = paginate(ordered, page)
     return {
       generatedAt: new Date().toISOString(),

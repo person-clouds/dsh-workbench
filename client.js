@@ -764,6 +764,7 @@ window.__ModuleLoader__.load({
     }
 
     const LIST_PAGE_SIZE = 9
+    const REPO_PAGE_SIZE = 4
 
     /** 分页只保留当前区间，页码过多时显示首尾与当前附近，避免按钮铺满页面。 */
     function usePagedList(items, pageSize = LIST_PAGE_SIZE) {
@@ -2104,8 +2105,10 @@ window.__ModuleLoader__.load({
         let params
         if (route.kind === 'repos') params = {
           view: 'repos',
-          offset: String((repoPage - 1) * LIST_PAGE_SIZE),
-          limit: String(LIST_PAGE_SIZE),
+          offset: String((repoPage - 1) * REPO_PAGE_SIZE),
+          limit: String(REPO_PAGE_SIZE),
+          sort: 'updatedAt',
+          dir: 'desc',
         }
         else if (route.kind === 'tree') params = { view: 'tree', repo: route.repo.id, path: route.path, offset: (treePage - 1) * LIST_PAGE_SIZE, limit: LIST_PAGE_SIZE }
         else params = { view: 'blob', repo: route.repo.id, path: route.path }
@@ -2134,7 +2137,7 @@ window.__ModuleLoader__.load({
           ? h('div', { className: 'sawb-empty' }, t('noRepos'))
           : h(React.Fragment, null,
               h('div', { className: 'sawb-repo-grid' }, repos.map(repo => h(RepoCard, { key: repo.id, repo, t, onOpen: openRepo }))),
-              h(Pagination, { page: repoPage, pageSize: LIST_PAGE_SIZE, total, t, onChange: setRepoPage }))
+              h(Pagination, { page: repoPage, pageSize: REPO_PAGE_SIZE, total, t, onChange: setRepoPage }))
       } else if (route.kind === 'tree') {
         const data = state.data
         const entries = data.entries || []
