@@ -14,8 +14,9 @@
 #   bash task/dsh-workbench/scripts/retire-legacy-units.sh --apply    # 执行
 #   bash task/dsh-workbench/scripts/retire-legacy-units.sh --apply dsh-superagent.service
 #
-# 需要 root 的部分（tailnet 8448 → 8099 的映射）本脚本不碰，执行后手动跑：
-#   sudo tailscale serve --https=8448 off
+# tailnet 8448 → 8099 的旧映射已关闭（2026-11-15 执行）：
+#   tailscale serve --https=8448 off
+# dsh 远程入口只保留 tailnet 8443；本脚本不碰 Tailscale。
 #
 # 回滚：
 #   # dsh-superagent（先按 HANDOVER.md 恢复 profile 与单元文件；单元文件未删）
