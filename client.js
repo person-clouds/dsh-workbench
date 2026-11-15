@@ -137,7 +137,13 @@ window.__ModuleLoader__.load({
       "sessionRange": "显示 {from}-{to} / 共 {total} 个会话",
       "sessionShowAll": "查看全部",
       "sessionCollapse": "收起",
-      "docsTreeHint": "按文件目录层级浏览，可折叠展开。",
+      "listRange": "显示 {from}-{to} / 共 {total} 项",
+      "listPrev": "上一页",
+      "listNext": "下一页",
+      "docsTreeHint": "目录默认收起，点击逐层展开。",
+      "docsRepoHint": "先选择仓库，再按目录层级展开文档。",
+      "docsRepoCount": "{n} 个仓库",
+      "backToDocsRepos": "返回仓库列表",
       "repoSourceConfigured": "DSH 配置",
       "repoSourceWorkspace": "工作区自动识别",
       "repoSourceSaWork": "SA 子项目",
@@ -378,7 +384,13 @@ window.__ModuleLoader__.load({
       "sessionRange": "Showing {from}-{to} of {total} sessions",
       "sessionShowAll": "Show all",
       "sessionCollapse": "Collapse",
-      "docsTreeHint": "Browse by file hierarchy; folders can be collapsed.",
+      "listRange": "Showing {from}-{to} of {total}",
+      "listPrev": "Prev",
+      "listNext": "Next",
+      "docsTreeHint": "Folders are collapsed by default; expand level by level.",
+      "docsRepoHint": "Pick a repository, then expand its docs by folder.",
+      "docsRepoCount": "{n} repos",
+      "backToDocsRepos": "Back to repositories",
       "repoSourceConfigured": "DSH config",
       "repoSourceWorkspace": "Auto-detected workspace",
       "repoSourceSaWork": "SA subproject",
@@ -645,6 +657,14 @@ window.__ModuleLoader__.load({
 .sawb-session-page { min-width: 24px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 6px; padding: 1px 6px; background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 11px; cursor: pointer; }
 .sawb-session-page:hover { background: var(--dsw-alias-bg-layer-2); }
 .sawb-session-page[aria-pressed="true"] { color: var(--dsw-alias-label-primary); border-color: var(--dsw-alias-brand-primary); background: var(--dsw-alias-bg-layer-2); }
+.sawb-pager { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; width: 100%; max-width: 1360px; margin: 16px auto 0; }
+.sawb-pager .sawb-meta { margin-right: auto; }
+.sawb-pager button:disabled { opacity: .45; cursor: default; }
+.sawb-doc-repo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; width: 100%; max-width: 1080px; margin: 0 auto; }
+.sawb-doc-repo { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 10px; padding: 14px 16px; background: var(--dsw-alias-bg-layer-1); color: inherit; font: inherit; text-align: left; cursor: pointer; min-width: 0; }
+.sawb-doc-repo:hover { border-color: var(--dsw-alias-brand-primary); background: var(--dsw-alias-bg-layer-2); }
+.sawb-doc-repo strong { font-size: 13px; }
+.sawb-doc-repo .sawb-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .sawb-card.sawb-ungrouped { border-style: dashed; }
 .sawb-doc-tree { padding: 6px 0; }
 .sawb-doc-folder { display: flex; align-items: center; gap: 6px; width: 100%; border: 0; background: transparent; color: inherit; font: inherit; padding: 5px 16px; cursor: pointer; text-align: left; }
@@ -711,6 +731,63 @@ window.__ModuleLoader__.load({
       if (ticket.live) return 'live'
       if (ticket.outcome === 'merged' || ticket.outcome === 'completed') return 'ok'
       return 'muted'
+    }
+
+    const LIST_PAGE_SIZE = 9
+
+    /** 分页只保留当前区间，页码过多时显示首尾与当前附近，避免按钮铺满页面。 */
+    function usePagedList(items, pageSize = LIST_PAGE_SIZE) {
+      const [page, setPage] = React.useState(1)
+      const source = items || []
+      const pageCount = Math.max(1, Math.ceil(source.length / pageSize))
+      React.useEffect(() => {
+        if (page > pageCount) setPage(1)
+      }, [page, pageCount])
+      const safePage = Math.min(page, pageCount)
+      return {
+        page: safePage,
+        setPage,
+        pageCount,
+        items: source.slice((safePage - 1) * pageSize, safePage * pageSize),
+      }
+    }
+
+    function pageItems(page, pageCount) {
+      if (pageCount <= 7) return Array.from({ length: pageCount }, (_, index) => index + 1)
+      const wanted = new Set([1, pageCount, page - 1, page, page + 1])
+      if (page <= 3) [2, 3, 4].forEach(value => wanted.add(value))
+      if (page >= pageCount - 2) [pageCount - 3, pageCount - 2, pageCount - 1].forEach(value => wanted.add(value))
+      const sorted = [...wanted].filter(value => value >= 1 && value <= pageCount).sort((left, right) => left - right)
+      const output = []
+      sorted.forEach((value, index) => {
+        if (index > 0 && value - sorted[index - 1] > 1) output.push('…')
+        output.push(value)
+      })
+      return output
+    }
+
+    function Pagination({ page, pageSize = LIST_PAGE_SIZE, total, t, onChange }) {
+      const pageCount = Math.max(1, Math.ceil(total / pageSize))
+      if (pageCount <= 1) return null
+      const from = (page - 1) * pageSize + 1
+      const to = Math.min(page * pageSize, total)
+      return h('div', { className: 'sawb-pager' },
+        h('span', { className: 'sawb-meta' }, t('listRange', { from, to, total })),
+        h('button', {
+          type: 'button', className: 'sawb-btn sawb-btn-sm', disabled: page <= 1,
+          onClick: () => onChange(Math.max(1, page - 1)),
+        }, `‹ ${t('listPrev')}`),
+        pageItems(page, pageCount).map((value, index) => value === '…'
+          ? h('span', { key: `gap:${index}`, className: 'sawb-meta' }, '…')
+          : h('button', {
+              key: value, type: 'button', className: 'sawb-session-page',
+              'aria-pressed': String(page === value),
+              onClick: () => onChange(value),
+            }, String(value))),
+        h('button', {
+          type: 'button', className: 'sawb-btn sawb-btn-sm', disabled: page >= pageCount,
+          onClick: () => onChange(Math.min(pageCount, page + 1)),
+        }, `${t('listNext')} ›`))
     }
 
     function external(href, text, key) {
@@ -1020,11 +1097,13 @@ window.__ModuleLoader__.load({
                 type: 'button', className: 'sawb-btn sawb-btn-sm',
                 onClick: () => { setExpanded(value => !value); setPage(1) },
               }, expanded ? t('sessionCollapse') : t('sessionShowAll')),
-              expanded ? null : Array.from({ length: pageCount }, (_, index) => h('button', {
-                key: index + 1, type: 'button', className: 'sawb-session-page',
-                'aria-pressed': String(page === index + 1),
-                onClick: () => setPage(index + 1),
-              }, String(index + 1))))
+              expanded ? null : pageItems(page, pageCount).map((value, index) => value === '…'
+                ? h('span', { key: `session-gap:${index}`, className: 'sawb-meta' }, '…')
+                : h('button', {
+                    key: value, type: 'button', className: 'sawb-session-page',
+                    'aria-pressed': String(page === value),
+                    onClick: () => setPage(value),
+                  }, String(value))))
           : null)
     }
 
@@ -1045,7 +1124,7 @@ window.__ModuleLoader__.load({
     }
 
     function DocFolder({ name, node, depth, repo, t, onOpen }) {
-      const [open, setOpen] = React.useState(depth < 1)
+      const [open, setOpen] = React.useState(false)
       return h(React.Fragment, null,
         h('button', { type: 'button', className: 'sawb-doc-folder', style: { paddingLeft: 16 + depth * 18 }, onClick: () => setOpen(value => !value) },
           h('span', { className: 'sawb-caret' }, open ? '▾' : '▸'),
@@ -1067,21 +1146,25 @@ window.__ModuleLoader__.load({
           h('span', { className: 'sawb-doc-path' }, item.path))))
     }
 
-    /** 文档中心：按仓库 + 文件目录层级展示 Markdown，点开后渲染正文。 */
+    /** 文档中心：先选仓库，再按目录层级按需读取该仓库的 Markdown 索引。 */
     function DocsView({ t, section, onSection }) {
-      const [index, setIndex] = React.useState({ phase: 'loading', groups: [], error: '' })
+      const [route, setRoute] = React.useState({ kind: 'repos', repo: undefined })
+      const [state, setState] = React.useState({ phase: 'loading', repos: [], groups: [], error: '' })
       const [doc, setDoc] = React.useState({ phase: 'idle', repo: undefined, data: undefined, error: '' })
+      const repoPaged = usePagedList(state.repos, 12)
 
       React.useEffect(() => {
         const controller = new AbortController()
-        loadApi({ view: 'docs' }, controller.signal)
-          .then(data => setIndex({ phase: 'ready', groups: data.groups || [], error: '' }))
+        setState(previous => ({ phase: 'loading', repos: previous.repos, groups: previous.groups, error: '' }))
+        const params = route.kind === 'repos' ? { view: 'docRepos' } : { view: 'docs', repo: route.repo.id }
+        loadApi(params, controller.signal)
+          .then(data => setState({ phase: 'ready', repos: data.repos || [], groups: data.groups || [], error: '' }))
           .catch(error => {
             if (error && error.name === 'AbortError') return
-            setIndex({ phase: 'error', groups: [], error: errorText(error) })
+            setState({ phase: 'error', repos: [], groups: [], error: errorText(error) })
           })
         return () => controller.abort()
-      }, [])
+      }, [route])
 
       const openDoc = (repo, path) => {
         setDoc({ phase: 'loading', repo, data: undefined, error: '' })
@@ -1111,27 +1194,54 @@ window.__ModuleLoader__.load({
                       : h('div', { className: 'sawb-panel' }, h(Markdown, { blocks: doc.data.blocks })))))
       }
 
-      const total = index.groups.reduce((sum, group) => sum + group.docs.length, 0)
+      if (route.kind === 'repos') {
+        return h(React.Fragment, null,
+          h('div', { className: 'sawb-head' },
+            h('h2', { className: 'sawb-title' }, t('docsTitle')),
+            h('span', { className: 'sawb-meta' }, t('docsRepoHint')),
+            h('span', { className: 'sawb-spacer' }),
+            h('span', { className: 'sawb-meta' }, t('docsRepoCount', { n: state.repos.length })),
+            h(Tabs, { section, t, onSection })),
+          h('div', { className: 'sawb-body' },
+            state.phase === 'error'
+              ? h(Notice, { tone: 'error' }, t('readFailed', { message: state.error }))
+              : state.phase === 'loading' && state.repos.length === 0
+                ? h('div', { className: 'sawb-empty' }, t('loadingData'))
+                : state.repos.length === 0
+                  ? h('div', { className: 'sawb-empty' }, t('noRepos'))
+                  : h(React.Fragment, null,
+                      h('div', { className: 'sawb-doc-repo-grid' }, repoPaged.items.map(repo => h('button', {
+                        key: repo.id, type: 'button', className: 'sawb-doc-repo',
+                        onClick: () => { setDoc({ phase: 'idle', repo: undefined, data: undefined, error: '' }); setRoute({ kind: 'repo', repo }) },
+                      },
+                        h('strong', null, repo.name),
+                        repo.description ? h('span', { className: 'sawb-meta' }, repo.description) : null,
+                        h('span', { className: 'sawb-meta sawb-mono' }, repo.id)))),
+                      h(Pagination, { page: repoPaged.page, pageSize: 12, total: state.repos.length, t, onChange: repoPaged.setPage }))))
+      }
+
+      const group = state.groups[0]
+      const total = group ? group.docs.length : 0
       return h(React.Fragment, null,
         h('div', { className: 'sawb-head' },
-          h('h2', { className: 'sawb-title' }, t('docsTitle')),
+          h('button', { type: 'button', className: 'sawb-btn', onClick: () => setRoute({ kind: 'repos', repo: undefined }) }, `← ${t('backToDocsRepos')}`),
+          h('h2', { className: 'sawb-title' }, route.repo.name),
           h('span', { className: 'sawb-meta' }, t('docsTreeHint')),
           h('span', { className: 'sawb-spacer' }),
           h('span', { className: 'sawb-meta' }, t('docsCount', { n: total })),
           h(Tabs, { section, t, onSection })),
         h('div', { className: 'sawb-body' },
-          index.phase === 'error'
-            ? h(Notice, { tone: 'error' }, t('readFailed', { message: index.error }))
-            : index.phase === 'loading'
+          state.phase === 'error'
+            ? h(Notice, { tone: 'error' }, t('readFailed', { message: state.error }))
+            : state.phase === 'loading'
               ? h('div', { className: 'sawb-empty' }, t('loadingData'))
               : total === 0
                 ? h('div', { className: 'sawb-empty' }, t('noDocs'))
-                : index.groups.map(group => group.docs.length === 0 ? null : h('section', { key: group.repo.id, className: 'sawb-section' },
-                    h('div', { className: 'sawb-doc-list' },
-                      h('div', { className: 'sawb-doc-group-title' },
-                        h('span', null, group.repo.name),
-                        badge(t('docsCount', { n: group.docs.length }), 'muted')),
-                      h(DocTree, { node: buildDocTree(group.docs), depth: 0, repo: group.repo, t, onOpen: openDoc }))))))
+                : h('div', { className: 'sawb-doc-list' },
+                    h('div', { className: 'sawb-doc-group-title' },
+                      h('span', null, route.repo.name),
+                      badge(t('docsCount', { n: total }), 'muted')),
+                    h(DocTree, { node: buildDocTree(group.docs), depth: 0, repo: group.repo, t, onOpen: openDoc }))))
     }
 
     /** 读取 SA 管理接口；只走 Host 同源代理，不在浏览器直连 3080 之外的端口。 */
@@ -1170,6 +1280,7 @@ window.__ModuleLoader__.load({
       const workspaces = (state.data && state.data.workspaces) || []
       const ungrouped = (state.data && state.data.ungrouped && state.data.ungrouped.sessions) || []
       const totalSessions = workspaces.reduce((sum, workspace) => sum + workspace.sessions.length, 0) + ungrouped.length
+      const paged = usePagedList(workspaces, 8)
       return h(React.Fragment, null,
         h('div', { className: 'sawb-head' },
           h('h2', { className: 'sawb-title' }, t('workspacesTitle')),
@@ -1186,7 +1297,7 @@ window.__ModuleLoader__.load({
               : h(React.Fragment, null,
                   state.data.sessionError ? h(Notice, null, state.data.sessionError) : null,
                   h('div', { className: 'sawb-grid' },
-                    workspaces.map(workspace => h('article', { key: workspace.id, className: 'sawb-card' },
+                    paged.items.map(workspace => h('article', { key: workspace.id, className: 'sawb-card' },
                       h('h3', null, workspace.title || workspace.id),
                       h('dl', { className: 'sawb-kv' },
                         h('dt', null, t('workspacePath')), h('dd', { className: 'sawb-mono', title: workspace.path }, workspace.path),
@@ -1200,7 +1311,11 @@ window.__ModuleLoader__.load({
                       h('h3', null, t('ungroupedTitle')),
                       h('p', { className: 'sawb-meta' }, t('ungroupedHint')),
                       h('div', { className: 'sawb-chips' }, h('span', { className: 'sawb-chip' }, t('ungroupedCount', { n: ungrouped.length }))),
-                      h(SessionList, { sessions: ungrouped, t, collapsible: true }))))))
+                      h(SessionList, { sessions: ungrouped, t, collapsible: true }))),
+                  h(Pagination, {
+                    page: paged.page, pageSize: 8, total: workspaces.length, t,
+                    onChange: paged.setPage,
+                  }))))
     }
 
     /** JSON 编辑器：用于 settings 块与 prompts，保存必须带 revision 防止覆盖并发修改。 */
@@ -1885,13 +2000,20 @@ window.__ModuleLoader__.load({
     /** 代码仓库：仓库列表 → 目录树 → 文件内容。全程只读。 */
     function CodeView({ t, section, onSection }) {
       const [route, setRoute] = React.useState({ kind: 'repos', repo: undefined, path: '' })
+      const [repoPage, setRepoPage] = React.useState(1)
       const [state, setState] = React.useState({ phase: 'loading', data: undefined, error: '' })
+      const treePaged = usePagedList((state.data && state.data.entries) || [], LIST_PAGE_SIZE)
 
+      React.useEffect(() => { treePaged.setPage(1) }, [route])
       React.useEffect(() => {
         const controller = new AbortController()
         setState({ phase: 'loading', data: undefined, error: '' })
         let params
-        if (route.kind === 'repos') params = { view: 'repos' }
+        if (route.kind === 'repos') params = {
+          view: 'repos',
+          offset: String((repoPage - 1) * LIST_PAGE_SIZE),
+          limit: String(LIST_PAGE_SIZE),
+        }
         else if (route.kind === 'tree') params = { view: 'tree', repo: route.repo.id, path: route.path }
         else params = { view: 'blob', repo: route.repo.id, path: route.path }
         loadApi(params, controller.signal)
@@ -1901,7 +2023,7 @@ window.__ModuleLoader__.load({
             setState({ phase: 'error', data: undefined, error: errorText(error) })
           })
         return () => controller.abort()
-      }, [route])
+      }, [route, repoPage])
 
       const openRepo = repo => setRoute({ kind: 'tree', repo, path: '' })
       const openTree = (repo, path) => setRoute({ kind: 'tree', repo, path })
@@ -1914,9 +2036,12 @@ window.__ModuleLoader__.load({
         content = h('div', { className: 'sawb-empty' }, t('loadingData'))
       } else if (route.kind === 'repos') {
         const repos = state.data.repos || []
+        const total = Number(state.data.total) || repos.length
         content = repos.length === 0
           ? h('div', { className: 'sawb-empty' }, t('noRepos'))
-          : h('div', { className: 'sawb-repo-grid' }, repos.map(repo => h(RepoCard, { key: repo.id, repo, t, onOpen: openRepo })))
+          : h(React.Fragment, null,
+              h('div', { className: 'sawb-repo-grid' }, repos.map(repo => h(RepoCard, { key: repo.id, repo, t, onOpen: openRepo }))),
+              h(Pagination, { page: repoPage, pageSize: LIST_PAGE_SIZE, total, t, onChange: setRepoPage }))
       } else if (route.kind === 'tree') {
         const data = state.data
         const entries = data.entries || []
@@ -1929,13 +2054,15 @@ window.__ModuleLoader__.load({
           h(Breadcrumbs, { repo: route.repo, path: data.path || '', t, onRoot: () => openTree(route.repo, ''), onPath: path => openTree(route.repo, path) }),
           entries.length === 0
             ? h('div', { className: 'sawb-empty' }, t('emptyTree'))
-            : h('div', { className: 'sawb-tree' }, entries.map(entry => h('button', {
-                key: entry.path, type: 'button', className: 'sawb-tree-row',
-                onClick: () => entry.type === 'dir' ? openTree(route.repo, entry.path) : openBlob(route.repo, entry.path),
-              },
-                h('span', { className: 'sawb-tree-icon', 'aria-hidden': true }, entry.type === 'dir' ? '▸' : '·'),
-                h('span', { className: 'sawb-tree-name' }, entry.name + (entry.type === 'dir' ? '/' : '')),
-                h('span', { className: 'sawb-meta' }, entry.type === 'dir' ? '' : (entry.lang || ''))))))
+            : h(React.Fragment, null,
+                h('div', { className: 'sawb-tree' }, treePaged.items.map(entry => h('button', {
+                  key: entry.path, type: 'button', className: 'sawb-tree-row',
+                  onClick: () => entry.type === 'dir' ? openTree(route.repo, entry.path) : openBlob(route.repo, entry.path),
+                },
+                  h('span', { className: 'sawb-tree-icon', 'aria-hidden': true }, entry.type === 'dir' ? '▸' : '·'),
+                  h('span', { className: 'sawb-tree-name' }, entry.name + (entry.type === 'dir' ? '/' : '')),
+                  h('span', { className: 'sawb-meta' }, entry.type === 'dir' ? '' : (entry.lang || ''))))),
+                h(Pagination, { page: treePaged.page, pageSize: LIST_PAGE_SIZE, total: entries.length, t, onChange: treePaged.setPage })))
       } else {
         const data = state.data
         const parent = route.path.includes('/') ? route.path.slice(0, route.path.lastIndexOf('/')) : ''

@@ -141,13 +141,33 @@ async function buildView(ctx, config, params, DatabaseSync) {
     if (error) return { error }
     return { generatedAt: new Date().toISOString(), ...(await retentionSnapshot(config, tickets, ctx.get('workspaceRegistry'))) }
   }
+  if (view === 'docRepos') {
+    const repos = await loadRepos(config, workspaceRepos(ctx))
+    return {
+      generatedAt: new Date().toISOString(),
+      repos: repos.map(repo => ({ id: repo.id, name: repo.name, description: repo.description, source: repo.source })),
+    }
+  }
   if (view === 'docs') {
     const repos = await loadRepos(config, workspaceRepos(ctx))
-    return { generatedAt: new Date().toISOString(), groups: await docsIndex(repos) }
+    return {
+      generatedAt: new Date().toISOString(),
+      groups: await docsIndex(repos, params.get('repo') || ''),
+    }
   }
   if (view === 'repos') {
     const repos = await loadRepos(config, workspaceRepos(ctx))
-    return { generatedAt: new Date().toISOString(), repos: await reposOverview(repos, ctx) }
+    const offset = Math.max(0, Math.floor(Number(params.get('offset')) || 0))
+    const requestedLimit = Math.floor(Number(params.get('limit')) || 0)
+    const limit = requestedLimit > 0 ? Math.min(requestedLimit, 50) : 0
+    const page = limit > 0 ? repos.slice(offset, offset + limit) : repos
+    return {
+      generatedAt: new Date().toISOString(),
+      repos: await reposOverview(page, ctx),
+      total: repos.length,
+      offset,
+      limit,
+    }
   }
   if (view === 'tree' || view === 'blob') {
     const repos = await loadRepos(config, workspaceRepos(ctx))

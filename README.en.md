@@ -16,9 +16,9 @@ Sidebar icon (id `dsh-workbench`, label “DSH 工作台”) → `main` slot:
 
 | Tab | Content |
 |---|---|
-| Workspaces | Reads DSH `workspaceRegistry`: all workspaces plus an explicit “ungrouped” bucket; shows session name/ID/archive/pin (archive and pin are read-only) |
-| Repos | SA delivery repo + DSH workspace paths + `<stateDir>/work/*` ticket subprojects; auto-detects git; directory tree, file content, recent commits, dirty count, session names |
-| Docs | Markdown index grouped by repo, expanded as a tree by file path |
+| Workspaces | Reads DSH `workspaceRegistry`: paged workspace cards plus an explicit “ungrouped” bucket; shows the latest 10 sessions with paging or expand-all; archive and pin are read-only |
+| Repos | SA delivery repo + DSH workspace paths + `<stateDir>/work/*` ticket subprojects; auto-detects git; paged repo cards, lazily loaded and paged directory tree, file content, recent commits, dirty count, session names |
+| Docs | Lists repos first, then loads that repo’s Markdown index on demand; folders are collapsed by default and expand level by level |
 | Tickets | SA ticket list and details: reports, diffs, ticket records; retry/stop directly |
 | SA Control | Overview/problems/health, source status and label refresh, thread subscriptions, decision records/dismissal, policy/executor/source forms, prompt team sections/skills/revision history; writes are proxied to `/orchestrator/api/*` |
 

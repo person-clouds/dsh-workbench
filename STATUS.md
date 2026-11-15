@@ -10,7 +10,8 @@
 
 - [x] 改名：目录、包名、插件 id、路由 `/dsh-workbench/api`、侧栏 id `dsh-workbench`、
       市场条目与语言元信息全部切换；不保留旧包名兼容。
-- [x] Host：`GET /dsh-workbench/api` 支持工单快照、`view=workspaces|repos|docs|tree|blob|retention`；
+- [x] Host：`GET /dsh-workbench/api` 支持工单快照、`view=workspaces|repos|docs|docRepos|tree|blob|retention`；
+      `repos` 支持 `offset/limit` 分页，`docs` 支持 `repo` 只加载单个仓库；
       `POST` 支持 `dry-run`、`cleanup`、`settings`。
 - [x] Host：读取 DSH `workspaceRegistry`，不再读第二份 `workspace.json`；仓库来源改为
       `config.repos` + DSH 工作区路径。
@@ -20,8 +21,10 @@
       手动 dry-run/cleanup 与每天最多一次自动清理；不删 DSH session 日志。
 - [x] Client：5 个标签页 `[工作区] [仓库] [文档] [工单] [SA 控制]`；工作区/保留策略/Settings
       与提示词编辑；工单重试/停止。
+- [x] Client：工作区/仓库卡片分页；文档页先选仓库再按需加载，目录默认收起；
+      仓库目录树分页；会话分页按钮过多时只显示首尾与当前附近页码。
 - [x] 语法与打包自检：`node --check index.js`、`client.js` 的 `vm.Script` 解析、
-      `npm pack --dry-run` 通过。
+      `npm pack --dry-run` 通过；`node --test handover/test-workbench-repos.mjs` 通过。
 - [x] 修复浏览器端重复加载注册失败：`zh`/`en` 字典移入 `factory` 闭包，顶层只保留
       `window.__ModuleLoader__.load({...})`。旧写法在 HMR/重复加载时会因顶层 `const`
       重声明抛 `SyntaxError`，表现为 `loaded without registering "dsh-workbench"`。
