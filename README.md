@@ -113,7 +113,11 @@ task/dsh-workbench/
 ├── locale/zh.json        # 中文文案
 ├── locale/en.json
 ├── market/person-clouds__dsh-workbench.yml
-└── icon.svg
+├── icon.svg
+├── scripts/
+│   ├── sa-state.sh            # SA 运行态只读读取（journal 取 token → cookie → /orchestrator/api/state）
+│   └── retire-legacy-units.sh # 收尾退役旧单元（dsh-superagent / superagent-console），幂等
+└── handover/                  # 单 Host 切换脚本与补丁（switch-single-host.sh 等）
 ```
 
 ## 已知限制
@@ -122,3 +126,6 @@ task/dsh-workbench/
 - 单次 diff 截断 400KB，单文件超过 2MB 或为二进制时不内联；
 - 不做代码全文搜索；
 - 能看到工作台的人等于能看到工单、文档与代码（与 DSH 登录态一致）。
+`sa-state.sh` 是 SA 运行态的唯一读取实现：`cloudctl sa status` 与
+`task/health-watch/scripts/checks/50-superagent.sh` 都调它，避免两套口径。
+

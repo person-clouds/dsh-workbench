@@ -7,6 +7,11 @@
 > 目标：只保留 `dsh-web` 一个 DSH Host（3080 / Tailnet 8443），
 > `dsh-superagent` 作为插件进入 `web` profile，停用 `superagent` profile
 > 与 3082 监听。`superagent` profile 文件保留作回滚，不删除。
+>
+> **现状（2026-11-15）**：切换已完成。`dsh-superagent.service` 已 `disable`（单元文件保留），
+> 3082 无监听；SA 运行态由 [`scripts/sa-state.sh`](scripts/sa-state.sh) 统一读取，
+> `./cloudctl sa status` 与 health-watch 都用它。若发现旧单元又被拉起，跑
+> `bash task/dsh-workbench/scripts/retire-legacy-units.sh --apply` 收尾（幂等）。
 
 ## 0. 备份
 
@@ -66,6 +71,11 @@ git apply       /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-super
 # ready 晚到时会覆盖已报告的 JSON 错误，导致测试偶发失败。保持本次进程的首个错误不降级。
 git apply --check /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-superagent-feishu-health-race.patch
 git apply       /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-superagent-feishu-health-race.patch
+
+# 2026-11-15 追加：移除 dsh-superagent 旧侧边栏入口，避免与
+# dsh-workbench「SA 控制」重复。只隐藏 sidebar.panellist，保留 main 深链。
+git apply --check /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-superagent-hide-legacy-sidebar.patch
+git apply       /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-superagent-hide-legacy-sidebar.patch
 
 # 补丁不新增依赖，但保险起见：
 pnpm install
@@ -354,8 +364,9 @@ pnpm install
 pnpm build
 ```
 
-若新 `dsh-web` 启动失败：按上面命令恢复 `web` profile 与旧 unit，先启动
-`dsh-superagent.service`，确认 3082 恢复，再启动 `dsh-web.service`。SA 数据库若在
+若新 `dsh-web` 启动失败：按上面命令恢复 `web` profile 与旧 unit（旧 unit 只是 `disable`，
+没有删文件，直接 `systemctl --user enable --now dsh-superagent.service` 即可），确认 3082 恢复，
+再启动 `dsh-web.service`；确认后记得再跑一次 `retire-legacy-units.sh --apply` 避免两个 Host 并存。SA 数据库若在
 切换中异常，先用备份目录中的 `orchestrator.sqlite*` 恢复再启动；不要直接删库。
 
 注意：`58a06a1` 已把 `task/superagent-workbench/` 改名为 `task/dsh-workbench/`。
