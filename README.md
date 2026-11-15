@@ -1,3 +1,5 @@
+[中文](README.md) | [English](README.en.md)
+
 # DSH 工作台（dsh-workbench）
 
 把 DSH 工作区、SA 工单与报告、交付分支改动、Markdown 文档和只读代码浏览放进同一个侧栏面板；

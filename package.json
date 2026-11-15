@@ -22,7 +22,9 @@
     "lib/sa.js",
     "locale/zh.json",
     "locale/en.json",
-    "icon.svg"
+    "icon.svg",
+    "README.md",
+    "README.en.md"
   ],
   "peerDependencies": {
     "@deepseek-ai/schemastery": "*"
