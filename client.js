@@ -82,6 +82,9 @@ window.__ModuleLoader__.load({
       "countLive": "{n} 条进行中",
       "filterLive": "只看进行中",
       "filterAll": "看全部",
+      "filterActive": "未归档",
+      "filterArchived": "已归档",
+      "filterAllSessions": "全部会话",
       "back": "返回列表",
       "emptyTickets": "没有读到工单。SA 还没处理过需求，或工单库路径不对。",
       "emptyLive": "当前没有进行中的工单。",
@@ -338,6 +341,9 @@ window.__ModuleLoader__.load({
       "countLive": "{n} active",
       "filterLive": "Active only",
       "filterAll": "Show all",
+      "filterActive": "Unarchived",
+      "filterArchived": "Archived",
+      "filterAllSessions": "All sessions",
       "back": "Back to list",
       "emptyTickets": "No tickets were found. SA has not handled any request yet, or the ticket database path is wrong.",
       "emptyLive": "No active tickets right now.",
@@ -858,9 +864,14 @@ window.__ModuleLoader__.load({
       return ''
     }
 
-    /** 按需加载一个接口：列表不带 ticket，详情带 ticket；两者不是同一份快照。 */
-    function loadSnapshot(ticketId, signal) {
-      const url = ticketId ? `${API}?ticket=${encodeURIComponent(ticketId)}` : API
+    /** 按需加载一个接口：列表不带 ticket，详情带 ticket；列表参数用于服务端筛选/分页。 */
+    function loadSnapshot(ticketId, signal, params) {
+      const search = new URLSearchParams()
+      if (ticketId) search.set('ticket', ticketId)
+      else Object.entries(params || {}).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') search.set(key, String(value))
+      })
+      const url = search.toString() ? `${API}?${search.toString()}` : API
       return fetch(url, { credentials: 'same-origin', signal, headers: { accept: 'application/json' } }).then(async response => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`)
         const data = await response.json()
@@ -952,21 +963,18 @@ window.__ModuleLoader__.load({
           extra))
     }
 
-    function ListView({ data, t, onOpen, section, onSection }) {
-      // 筛选状态必须独立于当前有没有 live 工单：否则 live 为空时两个按钮
-      // 实际都展示全部，用户会看到文案变了但列表不变，误以为按钮失效。
-      const [filter, setFilter] = React.useState('live')
-      const all = (data && data.tickets) || []
-      const live = all.filter(ticket => ticket.live)
-      const shown = filter === 'live' ? live : all
+    function ListView({ data, t, onOpen, section, onSection, filter, onFilter, page, onPage }) {
       const notices = []
       if (data && data.db && !data.db.ok) notices.push(h(Notice, { key: 'db', tone: 'error' }, t('dbMissing', { message: data.db.error })))
       if (data && data.repo && !data.repo.ok) notices.push(h(Notice, { key: 'repo' }, t('repoMissing', { dir: data.repo.dir })))
       const sync = data && data.repo && data.repo.sync
+      const tickets = (data && data.tickets) || []
+      const counts = (data && data.counts) || { all: 0, live: 0 }
+      const total = Number(data && data.total) || 0
       return h(React.Fragment, null,
         h('div', { className: 'sawb-head' },
           h('h2', { className: 'sawb-title' }, t('tickets')),
-          h('span', { className: 'sawb-meta' }, live.length > 0 ? `${t('countLive', { n: live.length })} · ${t('countAll', { n: all.length })}` : t('countAll', { n: all.length })),
+          h('span', { className: 'sawb-meta' }, `${t('countLive', { n: counts.live })} · ${t('countAll', { n: counts.all })}`),
           h('span', { className: 'sawb-spacer' }),
           sync && sync.at
             ? h('span', { className: 'sawb-meta', title: sync.message || '' },
@@ -978,14 +986,15 @@ window.__ModuleLoader__.load({
             className: 'sawb-btn',
             'aria-pressed': String(filter === 'all'),
             title: filter === 'live' ? t('filterAll') : t('filterLive'),
-            onClick: () => setFilter(value => value === 'live' ? 'all' : 'live'),
+            onClick: () => onFilter(filter === 'live' ? 'all' : 'live'),
           }, filter === 'live' ? t('filterAll') : t('filterLive')),
         ),
         h('div', { className: 'sawb-body' },
           notices,
-          shown.length === 0
-            ? h('div', { className: 'sawb-empty' }, all.length === 0 ? t('emptyTickets') : t('emptyLive'))
-            : h('div', null, shown.map(ticket => h(TicketRow, { key: ticket.id, ticket, t, onOpen })))),
+          tickets.length === 0
+            ? h('div', { className: 'sawb-empty' }, counts.all === 0 ? t('emptyTickets') : (filter === 'live' ? t('emptyLive') : t('emptyTickets')))
+            : h('div', null, tickets.map(ticket => h(TicketRow, { key: ticket.id, ticket, t, onOpen }))),
+          h(Pagination, { page, pageSize: 10, total, t, onChange: onPage })),
       )
     }
 
@@ -1088,24 +1097,39 @@ window.__ModuleLoader__.load({
 
     const SESSION_PAGE_SIZE = 10
 
-    /** 工作区会话默认折叠为最近 10 个；可翻页，也可一键展开全部。 */
-    function SessionList({ sessions, t, collapsible = false }) {
-      const [expanded, setExpanded] = React.useState(false)
-      const [page, setPage] = React.useState(1)
+    /** 会话列表只接收当前页预览；更多页从服务端按工作区/归档筛选加载。 */
+    function SessionList({ sessions, t, collapsible = false, total, workspaceId, archived = 'active' }) {
       const source = sessions || []
-      const ordered = React.useMemo(() => collapsible
-        ? [...source].sort((left, right) => Number(right.createdAt || 0) - Number(left.createdAt || 0))
-        : source, [source, collapsible])
-      const total = ordered.length
-      const pageCount = Math.max(1, Math.ceil(total / SESSION_PAGE_SIZE))
+      const [items, setItems] = React.useState(source)
+      const [page, setPage] = React.useState(1)
+      const [totalCount, setTotalCount] = React.useState(Number(total) || source.length)
+      const [loading, setLoading] = React.useState(false)
+      const [error, setError] = React.useState('')
       React.useEffect(() => {
-        if (page > pageCount) setPage(1)
-      }, [page, pageCount])
-      if (total === 0) return h('div', { className: 'sawb-meta', style: { marginTop: 8 } }, t('noSessions'))
-      const start = expanded ? 0 : (page - 1) * SESSION_PAGE_SIZE
-      const visible = expanded ? ordered : ordered.slice(start, start + SESSION_PAGE_SIZE)
+        setItems(source)
+        setPage(1)
+        setTotalCount(Number(total) || source.length)
+        setError('')
+      }, [source, total])
+      if (totalCount === 0) return h('div', { className: 'sawb-meta', style: { marginTop: 8 } }, t('noSessions'))
+      const changePage = next => {
+        setPage(next)
+        if (!workspaceId || next === 1) {
+          setItems(source)
+          return
+        }
+        setLoading(true)
+        setError('')
+        loadApi({ view: 'sessions', workspace: workspaceId, offset: (next - 1) * SESSION_PAGE_SIZE, limit: SESSION_PAGE_SIZE, archived, sort: 'createdAt', dir: 'desc' })
+          .then(data => {
+            setItems(data.sessions || [])
+            setTotalCount(Number(data.total) || 0)
+          })
+          .catch(failure => setError(errorText(failure)))
+          .finally(() => setLoading(false))
+      }
       return h(React.Fragment, null,
-        h('div', { className: 'sawb-session-list' }, visible.map(session => {
+        h('div', { className: 'sawb-session-list' }, items.map(session => {
           const name = sessionName(session, t)
           return h('div', { key: session.id, className: 'sawb-session', title: [name, session.id, session.cwd || ''].filter(Boolean).join('\n') },
             session.archived ? badge(t('sessionArchived'), 'muted') : null,
@@ -1113,22 +1137,10 @@ window.__ModuleLoader__.load({
             h('span', { className: 'sawb-session-name', title: name }, name),
             h('span', { className: 'sawb-session-id' }, session.id))
         })),
-        collapsible && total > SESSION_PAGE_SIZE
-          ? h('div', { className: 'sawb-session-more' },
-              h('span', { className: 'sawb-meta' }, expanded
-                ? t('workspaceSessionCount', { n: total })
-                : t('sessionRange', { from: start + 1, to: start + visible.length, total })),
-              h('button', {
-                type: 'button', className: 'sawb-btn sawb-btn-sm',
-                onClick: () => { setExpanded(value => !value); setPage(1) },
-              }, expanded ? t('sessionCollapse') : t('sessionShowAll')),
-              expanded ? null : pageItems(page, pageCount).map((value, index) => value === '…'
-                ? h('span', { key: `session-gap:${index}`, className: 'sawb-meta' }, '…')
-                : h('button', {
-                    key: value, type: 'button', className: 'sawb-session-page',
-                    'aria-pressed': String(page === value),
-                    onClick: () => setPage(value),
-                  }, String(value))))
+        loading ? h('div', { className: 'sawb-meta' }, t('loadingData')) : null,
+        error ? h(Notice, { tone: 'error' }, t('readFailed', { message: error })) : null,
+        collapsible && totalCount > SESSION_PAGE_SIZE
+          ? h(Pagination, { page, pageSize: SESSION_PAGE_SIZE, total: totalCount, t, onChange: changePage })
           : null)
     }
 
@@ -1176,20 +1188,26 @@ window.__ModuleLoader__.load({
       const [route, setRoute] = React.useState({ kind: 'repos', repo: undefined })
       const [state, setState] = React.useState({ phase: 'loading', repos: [], groups: [], error: '' })
       const [doc, setDoc] = React.useState({ phase: 'idle', repo: undefined, data: undefined, error: '' })
-      const repoPaged = usePagedList(state.repos, 12)
+      const [repoPage, setRepoPage] = React.useState(1)
+      const [repoTotal, setRepoTotal] = React.useState(0)
 
       React.useEffect(() => {
         const controller = new AbortController()
         setState(previous => ({ phase: 'loading', repos: previous.repos, groups: previous.groups, error: '' }))
-        const params = route.kind === 'repos' ? { view: 'docRepos' } : { view: 'docs', repo: route.repo.id }
+        const params = route.kind === 'repos'
+          ? { view: 'docRepos', offset: (repoPage - 1) * 12, limit: 12 }
+          : { view: 'docs', repo: route.repo.id }
         loadApi(params, controller.signal)
-          .then(data => setState({ phase: 'ready', repos: data.repos || [], groups: data.groups || [], error: '' }))
+          .then(data => {
+            setState({ phase: 'ready', repos: data.repos || [], groups: data.groups || [], error: '' })
+            setRepoTotal(Number(data.total) || (data.repos || []).length)
+          })
           .catch(error => {
             if (error && error.name === 'AbortError') return
             setState({ phase: 'error', repos: [], groups: [], error: errorText(error) })
           })
         return () => controller.abort()
-      }, [route])
+      }, [route, repoPage])
 
       const openDoc = (repo, path) => {
         setDoc({ phase: 'loading', repo, data: undefined, error: '' })
@@ -1225,7 +1243,7 @@ window.__ModuleLoader__.load({
             h('h2', { className: 'sawb-title' }, t('docsTitle')),
             h('span', { className: 'sawb-meta' }, t('docsRepoHint')),
             h('span', { className: 'sawb-spacer' }),
-            h('span', { className: 'sawb-meta' }, t('docsRepoCount', { n: state.repos.length })),
+            h('span', { className: 'sawb-meta' }, t('docsRepoCount', { n: repoTotal })),
             h(Tabs, { section, t, onSection })),
           h('div', { className: 'sawb-body' },
             state.phase === 'error'
@@ -1235,21 +1253,21 @@ window.__ModuleLoader__.load({
                 : state.repos.length === 0
                   ? h('div', { className: 'sawb-empty' }, t('noRepos'))
                   : h(React.Fragment, null,
-                      h('div', { className: 'sawb-doc-repo-grid' }, repoPaged.items.map(repo => h('button', {
+                      h('div', { className: 'sawb-doc-repo-grid' }, state.repos.map(repo => h('button', {
                         key: repo.id, type: 'button', className: 'sawb-doc-repo',
                         onClick: () => { setDoc({ phase: 'idle', repo: undefined, data: undefined, error: '' }); setRoute({ kind: 'repo', repo }) },
                       },
                         h('strong', null, repo.name),
                         repo.description ? h('span', { className: 'sawb-meta' }, repo.description) : null,
                         h('span', { className: 'sawb-meta sawb-mono' }, repo.id)))),
-                      h(Pagination, { page: repoPaged.page, pageSize: 12, total: state.repos.length, t, onChange: repoPaged.setPage }))))
+                      h(Pagination, { page: repoPage, pageSize: 12, total: repoTotal, t, onChange: setRepoPage }))))
       }
 
       const group = state.groups[0]
       const total = group ? group.docs.length : 0
       return h(React.Fragment, null,
         h('div', { className: 'sawb-head' },
-          h('button', { type: 'button', className: 'sawb-btn', onClick: () => setRoute({ kind: 'repos', repo: undefined }) }, `← ${t('backToDocsRepos')}`),
+          h('button', { type: 'button', className: 'sawb-btn', onClick: () => { setRepoPage(1); setRoute({ kind: 'repos', repo: undefined }) } }, `← ${t('backToDocsRepos')}`),
           h('h2', { className: 'sawb-title' }, route.repo.name),
           h('span', { className: 'sawb-meta' }, t('docsTreeHint')),
           h('span', { className: 'sawb-spacer' }),
@@ -1285,62 +1303,73 @@ window.__ModuleLoader__.load({
       })
     }
 
-    /** 工作区页：DSH Host 是 workspace.json 的唯一写者，这里只读展示全部工作区与未分组。 */
+    /** 工作区页：DSH Host 是 workspace.json 的唯一写者，这里只读展示工作区与未分组。 */
     function WorkspacesView({ t, section, onSection }) {
       const [state, setState] = React.useState({ phase: 'loading', data: undefined, error: '' })
+      const [archived, setArchived] = React.useState('active')
+      const [page, setPage] = React.useState(1)
       const load = React.useCallback(signal => {
         setState(previous => ({ phase: 'loading', data: previous.data, error: '' }))
-        loadApi({ view: 'workspaces' }, signal)
+        loadApi({ view: 'workspaces', offset: (page - 1) * 8, limit: 8, archived, sessionLimit: 10, sort: 'updatedAt', dir: 'desc' }, signal)
           .then(data => setState({ phase: 'ready', data, error: '' }))
           .catch(error => {
             if (error && error.name === 'AbortError') return
             setState({ phase: 'error', data: undefined, error: errorText(error) })
           })
-      }, [])
+      }, [page, archived])
       React.useEffect(() => {
         const controller = new AbortController()
         load(controller.signal)
         return () => controller.abort()
       }, [load])
-      const workspaces = (state.data && state.data.workspaces) || []
-      const ungrouped = (state.data && state.data.ungrouped && state.data.ungrouped.sessions) || []
-      const totalSessions = workspaces.reduce((sum, workspace) => sum + workspace.sessions.length, 0) + ungrouped.length
-      const paged = usePagedList(workspaces, 8)
+      const data = state.data
+      const workspaces = (data && data.workspaces) || []
+      const ungrouped = (data && data.ungrouped) || { sessions: [], sessionTotal: 0 }
+      const totalWorkspaces = Number(data && data.total) || 0
+      const totalSessions = Number(data && data.counts && data.counts.sessions) || 0
+      const filters = [['active', t('filterActive')], ['archived', t('filterArchived')], ['all', t('filterAllSessions')]]
       return h(React.Fragment, null,
         h('div', { className: 'sawb-head' },
           h('h2', { className: 'sawb-title' }, t('workspacesTitle')),
           h('span', { className: 'sawb-meta' }, t('workspacesHint')),
           h('span', { className: 'sawb-spacer' }),
-          h('span', { className: 'sawb-meta' }, `${t('workspaceCount', { n: workspaces.length })} · ${t('workspaceSessionCount', { n: totalSessions })}`),
+          h('span', { className: 'sawb-meta' }, `${t('workspaceCount', { n: totalWorkspaces })} · ${t('workspaceSessionCount', { n: totalSessions })}`),
           h(Tabs, { section, t, onSection }),
+          filters.map(([value, label]) => h('button', {
+            key: value, type: 'button', className: 'sawb-btn', 'aria-pressed': String(archived === value),
+            onClick: () => { setArchived(value); setPage(1) },
+          }, label)),
           h('button', { type: 'button', className: 'sawb-btn', onClick: () => load() }, t('refresh'))),
         h('div', { className: 'sawb-body' },
           state.phase === 'error'
             ? h(Notice, { tone: 'error' }, t('readFailed', { message: state.error }))
-            : !state.data
+            : !data
               ? h('div', { className: 'sawb-empty' }, t('loadingData'))
               : h(React.Fragment, null,
-                  state.data.sessionError ? h(Notice, null, state.data.sessionError) : null,
+                  data.sessionError ? h(Notice, null, data.sessionError) : null,
                   h('div', { className: 'sawb-grid' },
-                    paged.items.map(workspace => h('article', { key: workspace.id, className: 'sawb-card' },
+                    workspaces.map(workspace => h('article', { key: workspace.id, className: 'sawb-card' },
                       h('h3', null, workspace.title || workspace.id),
                       h('dl', { className: 'sawb-kv' },
                         h('dt', null, t('workspacePath')), h('dd', { className: 'sawb-mono', title: workspace.path }, workspace.path),
                         h('dt', null, t('workspaceCreated')), h('dd', null, when(workspace.createdAt))),
                       workspace.exists === false ? h(Notice, { tone: 'error' }, t('workspaceMissing')) : null,
                       h('div', { className: 'sawb-chips' },
-                        h('span', { className: 'sawb-chip' }, t('workspaceSessionCount', { n: workspace.sessions.length })),
+                        h('span', { className: 'sawb-chip' }, t('workspaceSessionCount', { n: workspace.sessionTotal })),
                         workspace.git ? h('span', { className: 'sawb-chip' }, t('repoGit')) : null),
-                      h(SessionList, { sessions: workspace.sessions, t, collapsible: true }))),
+                      h(SessionList, {
+                        key: `${workspace.id}:${archived}`, sessions: workspace.sessions, total: workspace.sessionTotal,
+                        workspaceId: workspace.id, archived, t, collapsible: true,
+                      }))),
                     h('article', { key: '__ungrouped', className: 'sawb-card sawb-ungrouped' },
                       h('h3', null, t('ungroupedTitle')),
                       h('p', { className: 'sawb-meta' }, t('ungroupedHint')),
-                      h('div', { className: 'sawb-chips' }, h('span', { className: 'sawb-chip' }, t('ungroupedCount', { n: ungrouped.length }))),
-                      h(SessionList, { sessions: ungrouped, t, collapsible: true }))),
-                  h(Pagination, {
-                    page: paged.page, pageSize: 8, total: workspaces.length, t,
-                    onChange: paged.setPage,
-                  }))))
+                      h('div', { className: 'sawb-chips' }, h('span', { className: 'sawb-chip' }, t('ungroupedCount', { n: ungrouped.sessionTotal }))),
+                      h(SessionList, {
+                        key: `ungrouped:${archived}`, sessions: ungrouped.sessions, total: ungrouped.sessionTotal,
+                        workspaceId: 'ungrouped', archived, t, collapsible: true,
+                      }))),
+                  h(Pagination, { page, pageSize: 8, total: totalWorkspaces, t, onChange: setPage }))))
     }
 
     /** JSON 编辑器：用于 settings 块与 prompts，保存必须带 revision 防止覆盖并发修改。 */
@@ -2065,10 +2094,10 @@ window.__ModuleLoader__.load({
     function CodeView({ t, section, onSection }) {
       const [route, setRoute] = React.useState({ kind: 'repos', repo: undefined, path: '' })
       const [repoPage, setRepoPage] = React.useState(1)
+      const [treePage, setTreePage] = React.useState(1)
       const [state, setState] = React.useState({ phase: 'loading', data: undefined, error: '' })
-      const treePaged = usePagedList((state.data && state.data.entries) || [], LIST_PAGE_SIZE)
 
-      React.useEffect(() => { treePaged.setPage(1) }, [route])
+      React.useEffect(() => { setTreePage(1) }, [route])
       React.useEffect(() => {
         const controller = new AbortController()
         setState({ phase: 'loading', data: undefined, error: '' })
@@ -2078,7 +2107,7 @@ window.__ModuleLoader__.load({
           offset: String((repoPage - 1) * LIST_PAGE_SIZE),
           limit: String(LIST_PAGE_SIZE),
         }
-        else if (route.kind === 'tree') params = { view: 'tree', repo: route.repo.id, path: route.path }
+        else if (route.kind === 'tree') params = { view: 'tree', repo: route.repo.id, path: route.path, offset: (treePage - 1) * LIST_PAGE_SIZE, limit: LIST_PAGE_SIZE }
         else params = { view: 'blob', repo: route.repo.id, path: route.path }
         loadApi(params, controller.signal)
           .then(data => setState({ phase: 'ready', data, error: '' }))
@@ -2087,7 +2116,7 @@ window.__ModuleLoader__.load({
             setState({ phase: 'error', data: undefined, error: errorText(error) })
           })
         return () => controller.abort()
-      }, [route, repoPage])
+      }, [route, repoPage, treePage])
 
       const openRepo = repo => setRoute({ kind: 'tree', repo, path: '' })
       const openTree = (repo, path) => setRoute({ kind: 'tree', repo, path })
@@ -2110,23 +2139,24 @@ window.__ModuleLoader__.load({
         const data = state.data
         const entries = data.entries || []
         const dirs = entries.filter(item => item.type === 'dir').length
+        const totalEntries = Number(data.total) || entries.length
         content = h(React.Fragment, null,
           h('div', { className: 'sawb-file-head' },
-            h('button', { type: 'button', className: 'sawb-btn', onClick: () => setRoute({ kind: 'repos' }) }, `← ${t('backToRepos')}`),
+            h('button', { type: 'button', className: 'sawb-btn', onClick: () => { setRepoPage(1); setRoute({ kind: 'repos' }) } }, `← ${t('backToRepos')}`),
             h('button', { type: 'button', className: 'sawb-btn', onClick: () => openTree(route.repo, '') }, t('repoPath')),
-            h('span', { className: 'sawb-meta' }, t('dirCount', { n: dirs }) + ' · ' + t('fileCount', { n: entries.length - dirs }))),
+            h('span', { className: 'sawb-meta' }, t('dirCount', { n: dirs }) + ' · ' + t('fileCount', { n: entries.length - dirs }) + ` / ${totalEntries}`)),
           h(Breadcrumbs, { repo: route.repo, path: data.path || '', t, onRoot: () => openTree(route.repo, ''), onPath: path => openTree(route.repo, path) }),
           entries.length === 0
             ? h('div', { className: 'sawb-empty' }, t('emptyTree'))
             : h(React.Fragment, null,
-                h('div', { className: 'sawb-tree' }, treePaged.items.map(entry => h('button', {
+                h('div', { className: 'sawb-tree' }, entries.map(entry => h('button', {
                   key: entry.path, type: 'button', className: 'sawb-tree-row',
                   onClick: () => entry.type === 'dir' ? openTree(route.repo, entry.path) : openBlob(route.repo, entry.path),
                 },
                   h('span', { className: 'sawb-tree-icon', 'aria-hidden': true }, entry.type === 'dir' ? '▸' : '·'),
                   h('span', { className: 'sawb-tree-name' }, entry.name + (entry.type === 'dir' ? '/' : '')),
                   h('span', { className: 'sawb-meta' }, entry.type === 'dir' ? '' : (entry.lang || ''))))),
-                h(Pagination, { page: treePaged.page, pageSize: LIST_PAGE_SIZE, total: entries.length, t, onChange: treePaged.setPage })))
+                h(Pagination, { page: treePage, pageSize: LIST_PAGE_SIZE, total: totalEntries, t, onChange: setTreePage })))
       } else {
         const data = state.data
         const parent = route.path.includes('/') ? route.path.slice(0, route.path.lastIndexOf('/')) : ''
@@ -2161,20 +2191,27 @@ window.__ModuleLoader__.load({
       const [list, setList] = React.useState({ phase: 'loading', data: undefined, error: '' })
       const [detail, setDetail] = React.useState({ id: '', ticket: undefined, phase: 'idle', error: '' })
       const [nonce, setNonce] = React.useState(0)
+      const [ticketFilter, setTicketFilter] = React.useState('live')
+      const [ticketPage, setTicketPage] = React.useState(1)
+      const ticketParams = React.useMemo(() => ({
+        filter: ticketFilter, offset: (ticketPage - 1) * 10, limit: 10, sort: 'createdAt', dir: 'desc',
+      }), [ticketFilter, ticketPage])
 
       React.useEffect(() => {
+        // 只有工单页需要工单快照；工作区/仓库/文档页不再顺带请求 SA 数据库与 git。
+        if (section !== 'tickets') return undefined
         let alive = true
         const controller = new AbortController()
-        const read = quiet => loadSnapshot('', controller.signal)
+        const read = () => loadSnapshot('', controller.signal, ticketParams)
           .then(data => { if (alive) setList({ phase: 'ready', data, error: '' }) })
           .catch(error => {
             if (!alive || (error && error.name === 'AbortError')) return
             setList(previous => ({ phase: 'error', data: previous.data, error: String(error && error.message ? error.message : error) }))
           })
-        void read(false)
-        const timer = setInterval(() => { void loadSnapshot('', controller.signal).then(data => { if (alive) setList({ phase: 'ready', data, error: '' }) }).catch(() => {}) }, REFRESH_MS)
+        void read()
+        const timer = setInterval(() => { loadSnapshot('', controller.signal, ticketParams).then(data => { if (alive) setList({ phase: 'ready', data, error: '' }) }).catch(() => {}) }, REFRESH_MS)
         return () => { alive = false; controller.abort(); clearInterval(timer) }
-      }, [nonce])
+      }, [nonce, ticketParams, section])
 
       const open = React.useCallback(id => {
         setDetail({ id, ticket: undefined, phase: 'loading', error: '' })
@@ -2201,7 +2238,12 @@ window.__ModuleLoader__.load({
       }
 
       return h(Root, null,
-        list.data ? h(ListView, { data: list.data, t, onOpen: open, section, onSection: setSection }) : null,
+        list.data ? h(ListView, {
+          data: list.data, t, onOpen: open, section, onSection: setSection,
+          filter: ticketFilter, page: ticketPage,
+          onFilter: value => { setTicketFilter(value); setTicketPage(1) },
+          onPage: setTicketPage,
+        }) : null,
         list.phase === 'loading' && !list.data ? h('div', { className: 'sawb-empty' }, t('loading')) : null,
         list.phase === 'error'
           ? h('div', { className: 'sawb-body' },

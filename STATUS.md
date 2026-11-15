@@ -1,10 +1,29 @@
 # STATUS — DSH 工作台
 
-- 更新时间：2026-11-15（工单筛选修复 + SA 原生前端兼容）
+- 更新时间：2026-11-16（列表规则强化：服务端分页、会话归档筛选、列表性能）
 - 一句话：DSH 单 Host 下的统一工作台。面板覆盖工作区、仓库、文档、工单和 SA 控制；
   SA 控制直接切到 `dsh-superagent` 原生 main 面板，60 天保留与清理仍有 dry-run 和逐项安全检查。
 - 位置：`task/dsh-workbench/`；包名 `dsh-workbench@0.2.1`。
 - 计划：[`PLAN-dsh-workbench.md`](PLAN-dsh-workbench.md)、[`PLAN-sa-ui-migration.md`](PLAN-sa-ui-migration.md)。
+
+## 2026-11-16 最新：列表规则强化与性能优化
+
+- [x] 新增 `lib/list.js` 统一列表参数：`offset/limit`（上限 50）、`total/hasMore`、
+      归档筛选规范化、排序字段/方向白名单、唯一 id 稳定次级排序。
+- [x] 会话默认 `archived=active`：`sessionCatalog` 先按归档状态过滤，再只为当前结果读标题快照；
+      工作区页提供「未归档 / 已归档 / 全部」切换，并保留页码/筛选状态。
+- [x] `view=workspaces` 改为服务端分页（默认 8 个），每卡只带当前 10 条会话预览与
+      `sessionTotal/sessionHasMore`；新增 `view=sessions&workspace=<id|ungrouped>` 分页接口，
+      卡片翻页不再全量展开。
+- [x] `view=repos`、`view=docRepos`、`view=tree` 统一服务端分页并返回 `total/hasMore`；
+      前端仓库卡片、文档仓库选择、目录树全部改为按页请求，不再本地切片。
+- [x] 工单列表改为服务端分页（默认 `filter=live`、每页 10），只对当前页解析文档标题；
+      移除了列表对全库逐条 `buildDiff` 的昂贵 git 操作；详情行为不变。
+- [x] 新增 `handover/test-workbench-lists.mjs`：覆盖参数上限/回退、默认未归档、
+      服务端会话分页与目录树单层分页；与既有 `test-workbench-repos.mjs` 一起通过。
+- [x] 校验：`node --check index.js/client.js/lib/*.js`、`node --test handover/test-workbench-lists.mjs
+      handover/test-workbench-repos.mjs` 通过。
+- [ ] 待重启 `dsh-web` 后做浏览器人工核对（需用户确认；未重启前插件代码不会生效）。
 
 ## 2026-11-15 最新：工单筛选修复 + SA 控制改走原生前端
 
@@ -30,8 +49,8 @@
 
 - [x] 改名：目录、包名、插件 id、路由 `/dsh-workbench/api`、侧栏 id `dsh-workbench`、
       市场条目与语言元信息全部切换；不保留旧包名兼容。
-- [x] Host：`GET /dsh-workbench/api` 支持工单快照、`view=workspaces|repos|docs|docRepos|tree|blob|retention`；
-      `repos` 支持 `offset/limit` 分页，`docs` 支持 `repo` 只加载单个仓库；
+- [x] Host：`GET /dsh-workbench/api` 支持工单快照、`view=workspaces|sessions|repos|docs|docRepos|tree|blob|retention`；
+      工作区/会话/仓库/文档仓库/目录树均支持服务端分页与归档筛选，`docs` 支持 `repo` 只加载单个仓库；
       `POST` 支持 `dry-run`、`cleanup`、`settings`。
 - [x] Host：读取 DSH `workspaceRegistry`，不再读第二份 `workspace.json`；仓库来源改为
       `config.repos` + DSH 工作区路径。
@@ -41,8 +60,8 @@
       手动 dry-run/cleanup 与每天最多一次自动清理；不删 DSH session 日志。
 - [x] Client：5 个标签页 `[工作区] [仓库] [文档] [工单] [SA 控制]`；工作区/保留策略/Settings
       与提示词编辑；工单重试/停止。
-- [x] Client：工作区/仓库卡片分页；文档页先选仓库再按需加载，目录默认收起；
-      仓库目录树分页；会话分页按钮过多时只显示首尾与当前附近页码。
+- [x] Client：工作区/仓库/工单/目录树均按服务端页请求；文档页先选仓库再按需加载，目录默认收起；
+      会话默认未归档并可切换归档范围，分页按钮过多时只显示首尾与当前附近页码。
 - [x] 语法与打包自检：`node --check index.js`、`client.js` 的 `vm.Script` 解析、
       `npm pack --dry-run` 通过；`node --test handover/test-workbench-repos.mjs` 通过。
 - [x] 修复浏览器端重复加载注册失败：`zh`/`en` 字典移入 `factory` 闭包，顶层只保留

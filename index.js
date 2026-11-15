@@ -12,12 +12,13 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import z from '@deepseek-ai/schemastery'
 import { branchDiff, fileAt, findTicketDoc, headInfo, looksLikeRepo, syncRemote } from './lib/gitdata.js'
+import { archivedFilter, listParams, paginate, sortBy, timeValue } from './lib/list.js'
 import { firstHeading, markdownBlocks, splitPatch, withParts } from './lib/markdown.js'
 import { allowedSaRequest, proxySa } from './lib/sa.js'
 import { docsIndex, findRepo, loadRepos, repoBlob, repoTree, reposOverview } from './lib/repos.js'
 import { loadTickets } from './lib/tickets.js'
 import { retentionFile, retentionSnapshot, runCleanup } from './lib/retention.js'
-import { workspaceRepos, workspacesOverview } from './lib/workspaces.js'
+import { sessionsPage, workspaceRepos, workspacesOverview } from './lib/workspaces.js'
 
 export const name = 'dsh-workbench'
 /** webServer 提供路由，connection 提供 Host / Origin 校验与浏览器鉴权。 */
@@ -97,8 +98,9 @@ async function buildDiff(repoDir, ticket, withPatch) {
   }
 }
 
-/** 组装工单快照；`?ticket=` 只组装详情。 */
-async function buildSnapshot(config, ticketId, DatabaseSync) {
+/** 组装工单快照；`?ticket=` 只组装详情。列表只对当前页查 git 文档。 */
+async function buildSnapshot(config, ticketId, params, DatabaseSync) {
+  const query = params || new URLSearchParams()
   const dbPath = dbPathOf(config)
   const repoDir = config.repoDir
   const repo = { dir: repoDir, ok: looksLikeRepo(repoDir), baseRef: config.baseRef, sync: syncState }
@@ -123,18 +125,44 @@ async function buildSnapshot(config, ticketId, DatabaseSync) {
     return { ...base, ticket: { ...ticket, doc, diff } }
   }
 
-  const withDocs = await Promise.all(tickets.map(async ticket => {
-    const [doc, diff] = await Promise.all([buildDoc(repoDir, ticket), buildDiff(repoDir, ticket, false)])
-    return { ...ticket, reports: ticket.reports.length, doc: doc ? { path: doc.path, title: doc.title } : undefined, diff: diff.exists ? diff : undefined }
+  const filter = query.get('filter') === 'all' ? 'all' : 'live'
+  const filtered = filter === 'live' ? tickets.filter(ticket => ticket.live) : tickets
+  const sort = query.get('sort') === 'updatedAt' ? 'updatedAt' : 'createdAt'
+  const dir = query.get('dir') === 'asc' ? 'asc' : 'desc'
+  const ordered = sortBy(filtered, sort, dir, (ticket, field) => timeValue(ticket[field]), ticket => ticket.id)
+  const page = paginate(ordered, { offset: Math.max(0, Number(query.get('offset')) || 0), limit: Math.max(1, Math.min(Number(query.get('limit')) || 10, 50)) })
+  // 列表渲染只使用当前页的文档标题；不再为整库逐条 buildDiff。
+  const withDocs = await Promise.all(page.items.map(async ticket => {
+    const doc = await buildDoc(repoDir, ticket)
+    return { ...ticket, reports: ticket.reports.length, doc: doc ? { path: doc.path, title: doc.title } : undefined }
   }))
-  return { ...base, tickets: withDocs }
+  return { ...base, tickets: withDocs, total: page.total, offset: page.offset, limit: page.limit, hasMore: page.hasMore, filter, sort, dir }
 }
 
 /** 文档、代码、工作区、保留策略等读请求共用的调度入口。 */
 async function buildView(ctx, config, params, DatabaseSync) {
   const view = params.get('view') || ''
   if (view === 'workspaces') {
-    return { generatedAt: new Date().toISOString(), ...(await workspacesOverview(ctx)) }
+    const page = listParams(params, { defaultLimit: 8, maxLimit: 20, defaultSort: 'updatedAt', allowedSorts: ['updatedAt', 'createdAt', 'title', 'id'], defaultDir: 'desc' })
+    return {
+      generatedAt: new Date().toISOString(),
+      ...(await workspacesOverview(ctx, {
+        ...page,
+        archived: archivedFilter(params.get('archived'), 'active'),
+        sessionLimit: Math.max(1, Math.min(Number(params.get('sessionLimit')) || 10, 20)),
+      })),
+    }
+  }
+  if (view === 'sessions') {
+    const page = listParams(params, { defaultLimit: 10, maxLimit: 50, defaultSort: 'createdAt', allowedSorts: ['createdAt', 'id', 'title', 'kind'], defaultDir: 'desc' })
+    return {
+      generatedAt: new Date().toISOString(),
+      ...(await sessionsPage(ctx, {
+        ...page,
+        workspace: params.get('workspace') || 'ungrouped',
+        archived: archivedFilter(params.get('archived'), 'active'),
+      })),
+    }
   }
   if (view === 'retention') {
     const { tickets, error } = await loadTickets(dbPathOf(config))
@@ -143,9 +171,18 @@ async function buildView(ctx, config, params, DatabaseSync) {
   }
   if (view === 'docRepos') {
     const repos = await loadRepos(config, workspaceRepos(ctx))
+    const page = listParams(params, { defaultLimit: 12, maxLimit: 50, defaultSort: 'name', allowedSorts: ['name', 'id', 'source'], defaultDir: 'asc' })
+    const ordered = sortBy(repos, page.sort, page.dir, (repo, field) => field === 'name' ? repo.name : field === 'source' ? repo.source : repo.id, repo => repo.id)
+    const result = paginate(ordered, page)
     return {
       generatedAt: new Date().toISOString(),
-      repos: repos.map(repo => ({ id: repo.id, name: repo.name, description: repo.description, source: repo.source })),
+      repos: result.items.map(repo => ({ id: repo.id, name: repo.name, description: repo.description, source: repo.source })),
+      total: result.total,
+      offset: result.offset,
+      limit: result.limit,
+      hasMore: result.hasMore,
+      sort: page.sort,
+      dir: page.dir,
     }
   }
   if (view === 'docs') {
@@ -157,16 +194,18 @@ async function buildView(ctx, config, params, DatabaseSync) {
   }
   if (view === 'repos') {
     const repos = await loadRepos(config, workspaceRepos(ctx))
-    const offset = Math.max(0, Math.floor(Number(params.get('offset')) || 0))
-    const requestedLimit = Math.floor(Number(params.get('limit')) || 0)
-    const limit = requestedLimit > 0 ? Math.min(requestedLimit, 50) : 0
-    const page = limit > 0 ? repos.slice(offset, offset + limit) : repos
+    const page = listParams(params, { defaultLimit: 12, maxLimit: 50, defaultSort: 'name', allowedSorts: ['name', 'id', 'source'], defaultDir: 'asc' })
+    const ordered = sortBy(repos, page.sort, page.dir, (repo, field) => field === 'name' ? repo.name : field === 'source' ? repo.source : repo.id, repo => repo.id)
+    const result = paginate(ordered, page)
     return {
       generatedAt: new Date().toISOString(),
-      repos: await reposOverview(page, ctx),
-      total: repos.length,
-      offset,
-      limit,
+      repos: await reposOverview(result.items, ctx),
+      total: result.total,
+      offset: result.offset,
+      limit: result.limit,
+      hasMore: result.hasMore,
+      sort: page.sort,
+      dir: page.dir,
     }
   }
   if (view === 'tree' || view === 'blob') {
@@ -174,8 +213,9 @@ async function buildView(ctx, config, params, DatabaseSync) {
     const repo = findRepo(repos, params.get('repo') || '')
     if (!repo) return { error: `找不到仓库：${params.get('repo') || ''}` }
     if (!looksLikeRepo(repo.path) && repo.mode === 'git') return { error: `仓库不可用：${repo.path}` }
+    const treePage = listParams(params, { defaultLimit: 50, maxLimit: 50, defaultSort: 'name', allowedSorts: ['name'], defaultDir: 'asc' })
     const result = view === 'tree'
-      ? await repoTree(repo, params.get('path') || '')
+      ? await repoTree(repo, params.get('path') || '', treePage)
       : await repoBlob(repo, params.get('path') || '')
     return {
       generatedAt: new Date().toISOString(),
@@ -204,8 +244,8 @@ function cached(key, ttlSeconds, build) {
   return cache.pending
 }
 
-function cachedSnapshot(config, ticketId, DatabaseSync) {
-  return cached(`ticket:${ticketId || ''}`, config.cacheSeconds, () => buildSnapshot(config, ticketId, DatabaseSync))
+function cachedSnapshot(config, ticketId, params, DatabaseSync) {
+  return cached(`ticket:${ticketId || ''}:${params ? params.toString() : ''}`, config.cacheSeconds, () => buildSnapshot(config, ticketId, params, DatabaseSync))
 }
 
 function cachedView(ctx, config, params, DatabaseSync) {
@@ -295,8 +335,8 @@ function serveRoute(ctx, config) {
       const view = url.searchParams.get('view') || ''
       const value = view
         ? await cachedView(ctx, config, url.searchParams, ctx.get('node:sqlite')?.DatabaseSync)
-        : await cachedSnapshot(config, url.searchParams.get('ticket') || '', ctx.get('node:sqlite')?.DatabaseSync)
-      const failed = value && value.error && !value.tickets && !value.ticket && !value.groups && !value.repos && !value.entries && !value.path && !value.workspaces && !value.candidates
+        : await cachedSnapshot(config, url.searchParams.get('ticket') || '', url.searchParams, ctx.get('node:sqlite')?.DatabaseSync)
+      const failed = value && value.error && !value.tickets && !value.ticket && !value.groups && !value.repos && !value.entries && !value.path && !value.workspaces && !value.sessions && !value.candidates
       json(res, failed ? 400 : 200, value)
     } catch (error) {
       json(res, 500, { error: String(error && error.message ? error.message : error) })

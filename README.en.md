@@ -16,10 +16,10 @@ Sidebar icon (id `dsh-workbench`, label “DSH 工作台”) → `main` slot:
 
 | Tab | Content |
 |---|---|
-| Workspaces | Reads DSH `workspaceRegistry`: paged workspace cards plus an explicit “ungrouped” bucket; shows the latest 10 sessions with paging or expand-all; archive and pin are read-only |
-| Repos | SA delivery repo + DSH workspace paths + `<stateDir>/work/*` ticket subprojects; auto-detects git; paged repo cards, lazily loaded and paged directory tree, file content, recent commits, dirty count, session names |
+| Workspaces | Reads DSH `workspaceRegistry`: server-paged workspace cards plus an explicit “ungrouped” bucket; sessions default to **unarchived**, with an unarchived/archived/all switch; each card pages sessions on the server |
+| Repos | SA delivery repo + DSH workspace paths + `<stateDir>/work/*` ticket subprojects; auto-detects git; server-paged repo cards and directory tree, file content, recent commits, dirty count, unarchived session names |
 | Docs | Lists repos first, then loads that repo’s Markdown index on demand; folders are collapsed by default and expand level by level |
-| Tickets | SA ticket list and details: reports, diffs, ticket records; retry/stop directly; the top-right toggle explicitly switches between “Active only” and “Show all” |
+| Tickets | Server-paged SA ticket list, active-only by default; details contain reports, diffs and ticket records; retry/stop directly; the list does not run git lookups for every ticket |
 | SA Control | Opens the genuine `dsh-superagent` main panel: Overview / Sources / Triggers / Eval / Execution / Settings & prompts. Workbench-only capabilities missing from the native page are listed in [`PLAN-sa-ui-migration.md`](PLAN-sa-ui-migration.md); not implemented in this round |
 
 ## Data sources
@@ -34,6 +34,20 @@ Sidebar icon (id `dsh-workbench`, label “DSH 工作台”) → `main` slot:
 | Branch changes | `git diff <baseRef>...agent/<executor>` | Read-only; background `git fetch` updates refs only |
 | Docs / code | `config.repos` + DSH workspace paths | `git` or `worktree` mode |
 | SA management writes | Native `dsh-superagent` panel → `/orchestrator/api/*` | Same origin as the workbench; the old `lib/sa.js` proxy is only a fallback when the layout service is unavailable |
+
+
+## List query conventions
+
+- Growing lists use server-side `offset`/`limit` (limit capped at 50) and return `total`/`hasMore`;
+  the client keeps only the current page and never slices a full response in the browser;
+- Sessions default to `archived=active`; only an explicit `archived=archived|all` shows archived sessions.
+  The Workspaces tab exposes an unarchived / archived / all switch;
+- Sort fields and directions are allow-listed with defaults; time-based lists default to descending time
+  with a unique id as the stable secondary key;
+- The ticket list resolves document titles only for the current page and no longer runs `buildDiff`
+  for every ticket in the database;
+- Directory trees return one level with `entries + total + hasMore`; workspace session cards page via
+  `view=sessions&workspace=<id|ungrouped>&offset=&limit=&archived=`.
 
 ## Install
 
@@ -106,7 +120,8 @@ task/dsh-workbench/
 ├── lib/gitdata.js        # git show / ls-tree / diff / fetch
 ├── lib/markdown.js       # Markdown subset → blocks / inline spans; diff chunks
 ├── lib/repos.js          # read-only repos: docs index / tree / file contents
-├── lib/workspaces.js     # DSH workspaceRegistry + ungrouped + session titles
+├── lib/workspaces.js     # DSH workspaceRegistry + ungrouped + session paging
+├── lib/list.js           # list paging / archive filter / sort allow-list
 ├── lib/sessions.js       # sessionQuery session catalog and title snapshots
 ├── lib/retention.js      # 60-day retention, safety checks and cleanup ledger
 ├── lib/sa.js             # SA management API allowlist proxy

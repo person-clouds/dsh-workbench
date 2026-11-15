@@ -18,10 +18,10 @@
 
 | 标签页 | 内容 |
 |---|---|
-| 工作区 | 读取 DSH `workspaceRegistry`：工作区卡片分页展示 + 「未分组」桶；会话默认最近 10 个，可翻页或展开全部；归档/pin 状态只读展示 |
-| 仓库 | SA 交付仓库 + DSH 工作区路径 + `<stateDir>/work/*` 工单子项目，自动检测 git；仓库卡片分页、目录逐层加载并分页，展示文件内容、最近提交、未提交改动数、会话名 |
-| 文档 | 先列出仓库，选择后按需读取该仓库的 Markdown 索引；目录默认收起，点击逐层展开 |
-| 工单 | SA 工单列表与详情：报告、diff、工单记录；可直接重试/停止；右上角可在「只看进行中 / 看全部」之间明确切换 |
+| 工作区 | 读取 DSH `workspaceRegistry`：工作区卡片服务端分页 + 「未分组」桶；会话默认只显示**未归档**，顶部可切换未归档/已归档/全部；每张卡片显示当前页会话，翻页由服务端完成 |
+| 仓库 | SA 交付仓库 + DSH 工作区路径 + `<stateDir>/work/*` 工单子项目，自动检测 git；仓库卡片与目录逐层加载均由服务端分页，展示文件内容、最近提交、未提交改动数、未归档会话名 |
+| 文档 | 仓库选择服务端分页；选择后按需读取该仓库的 Markdown 索引，目录默认收起，点击逐层展开 |
+| 工单 | SA 工单列表服务端分页，默认只查进行中；详情含报告、diff、工单记录；可直接重试/停止；列表不对全库逐条查 git |
 | SA 控制 | 一键切到 `dsh-superagent` 原生 main 面板：概览 / 来源 / 触发 / 评估 / 执行 / 设置与提示词。工作台独有但原生暂缺的能力只登记在 [`PLAN-sa-ui-migration.md`](PLAN-sa-ui-migration.md)，本轮不实现 |
 
 ## 数据来源
@@ -36,6 +36,18 @@
 | 分支改动 | `git diff <baseRef>...agent/<执行名>` | 只读；后台 `git fetch` 只更新引用 |
 | 文档 / 代码 | `config.repos` + DSH 工作区路径 | `git` 或 `worktree` 模式 |
 | SA 管理写操作 | `dsh-superagent` 原生面板 → `/orchestrator/api/*` | 原生页面与工作台同源；工作台旧 `lib/sa.js` 代理仅作布局接口不可用时的降级回退 |
+
+
+## 列表查询约定
+
+- 所有会持续增长的列表使用 `offset`/`limit`（`limit` 上限 50），响应带 `total`/`hasMore`；
+  前端只保留当前页状态，不再先拉全量再切片；
+- 会话默认 `archived=active`，显式传 `archived=archived|all` 才查看归档；工作区页顶部提供
+  未归档 / 已归档 / 全部切换；
+- 排序字段与方向走白名单，非法值回退默认；时间列表默认时间倒序并用唯一 id 做稳定次级键；
+- 工单列表只对当前页解析文档标题，不再为整库每条执行 `buildDiff`；
+- 目录树按一层返回 `entries + total + hasMore`；工作区会话卡片额外分页接口
+  `view=sessions&workspace=<id|ungrouped>&offset=&limit=&archived=`。
 
 ## 安装
 
@@ -117,7 +129,8 @@ task/dsh-workbench/
 ├── lib/gitdata.js        # git show / ls-tree / diff / fetch
 ├── lib/markdown.js       # Markdown 子集 → block / 行内片段；diff 切块
 ├── lib/repos.js          # 只读仓库：文档索引 / 目录树 / 文件内容
-├── lib/workspaces.js     # DSH workspaceRegistry + 未分组 + 会话标题
+├── lib/workspaces.js     # DSH workspaceRegistry + 未分组 + 会话分页
+├── lib/list.js           # 列表分页/归档筛选/排序白名单
 ├── lib/sessions.js       # sessionQuery 会话目录与标题快照
 ├── lib/retention.js      # 60 天保留、安全检查与清理台账
 ├── lib/sa.js             # SA 管理 API 白名单代理
