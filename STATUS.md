@@ -284,3 +284,37 @@ void runtime.ready.then(
   `zh`/`en` 字典在 `factory` 内联，需与 `locale/*.json` 同步。
 - 插件目录需本地 `@deepseek-ai/schemastery`；重装后若缺依赖，Host 导入会失败。
 - 清理只覆盖 SA 约定 worktree 与 DSH 工作区注册，不删除 session 日志，不提供 `rm -rf`。
+
+## 2026-11-15 展示补全与 SA 控制重做
+
+### 调整
+
+- 工作区页不再只依赖已有分组：Host 端同时返回 `workspaces` 与
+  `ungrouped`，浏览器展示所有工作区卡片及明确的「未分组」桶；会话显示
+  `sessionQuery` 标题，找不到标题时回退「未命名会话 + ID」。
+- 仓库页从“只有两个”修正为四类来源合并：显式 `config.repos`、SA 交付仓库
+  `repoDir`、DSH 工作区路径、`<stateDir>/work/*` 工单子项目；按真实路径去重，
+  每项显示来源徽标与 git 检测结果，并附 cwd 命中的会话名。
+- 文档页保持原 API 扁平 `{path,title}` 数据，浏览器侧构建层级树；目录可折叠，
+  路径分隔与计数保持稳定。
+- SA 控制页不再直接 `<pre>` 原始 JSON：新增概览/问题/健康、来源状态与 health、
+  标签刷新、策略同步、线程订阅/取消订阅、决策记录与不可用决策忽略、
+  revision-aware 设置表单（含 `rows`/facts/高级开关）、
+  提示词编辑（团队三段、技能、修订历史）和保留策略；所有写操作仍走白名单代理。
+- 旧 `dsh-superagent` 侧边栏入口与工作台重复。新增待应用的
+  `handover/dsh-superagent-hide-legacy-sidebar.patch`：只移除侧栏图标，
+  保留 `main` 深链供排障，日常管理统一走 `dsh-workbench`。
+
+### 验证
+
+| 项 | 结果 |
+|---|---|
+| `node --check index.js` / `lib/*.js` | 通过 |
+| `client.js` `vm.Script` 解析 + 连续加载两次 | 两次均注册 `dsh-workbench`，factory 可执行 |
+| 临时 Host（复制 DSH_HOME，3081）`view=workspaces` | 返回 2 个工作区 + 未分组桶 |
+| 临时 Host `view=repos` | 14 项：1 sa-delivery + 2 workspace + 11 sa-work；git 检测均成功 |
+| 临时 Host `view=docs` | 14 组、按仓库返回 Markdown 文件 |
+| `handover/dsh-superagent-hide-legacy-sidebar.patch` | 在源文件临时副本上 `patch --dry-run` 通过 |
+| `npm pack --dry-run` | 通过，包含 `lib/sessions.js` |
+
+> 本次改动需重启 `dsh-web.service` 并硬刷新浏览器才会生效。

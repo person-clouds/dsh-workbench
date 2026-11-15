@@ -74,6 +74,8 @@ git apply       /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-super
 
 # 2026-11-15 追加：移除 dsh-superagent 旧侧边栏入口，避免与
 # dsh-workbench「SA 控制」重复。只隐藏 sidebar.panellist，保留 main 深链。
+# 「SA 控制」现已覆盖 overview/sources/threads/decisions/settings/prompts，
+# 以及工单页的 execution，旧面板的日常管理入口不再需要。
 git apply --check /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-superagent-hide-legacy-sidebar.patch
 git apply       /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-superagent-hide-legacy-sidebar.patch
 

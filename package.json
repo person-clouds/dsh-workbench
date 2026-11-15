@@ -18,6 +18,7 @@
     "lib/markdown.js",
     "lib/repos.js",
     "lib/workspaces.js",
+    "lib/sessions.js",
     "lib/retention.js",
     "lib/sa.js",
     "locale/zh.json",

@@ -147,7 +147,7 @@ async function buildView(ctx, config, params, DatabaseSync) {
   }
   if (view === 'repos') {
     const repos = await loadRepos(config, workspaceRepos(ctx))
-    return { generatedAt: new Date().toISOString(), repos: await reposOverview(repos) }
+    return { generatedAt: new Date().toISOString(), repos: await reposOverview(repos, ctx) }
   }
   if (view === 'tree' || view === 'blob') {
     const repos = await loadRepos(config, workspaceRepos(ctx))

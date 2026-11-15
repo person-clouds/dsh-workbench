@@ -127,6 +127,116 @@ window.__ModuleLoader__.load({
       "saSaved": "已保存",
       "saRaw": "原始 JSON",
       "saUnavailable": "SA 管理接口不可用：{message}",
+      "ungroupedTitle": "未分组",
+      "ungroupedHint": "不属于任何工作区的 DSH 会话；与工作区页使用同一套会话目录。",
+      "ungroupedCount": "{n} 个未分组会话",
+      "workspaceSessionCount": "{n} 个会话",
+      "sessionUntitled": "未命名会话",
+      "noSessions": "没有会话。",
+      "sessionUpdated": "更新于 {time}",
+      "docsTreeHint": "按文件目录层级浏览，可折叠展开。",
+      "repoSourceConfigured": "DSH 配置",
+      "repoSourceWorkspace": "工作区自动识别",
+      "repoSourceSaWork": "SA 子项目",
+      "repoSourceSaDelivery": "SA 交付仓库",
+      "repoGit": "git 仓库",
+      "repoNoGit": "非 git 目录",
+      "repoSessionCount": "{n} 个会话",
+      "saOverview": "概览",
+      "saSourcesTab": "来源",
+      "saSettingsTab": "配置",
+      "saPromptsTab": "提示词",
+      "saThreadsTab": "线程",
+      "saDecisionsTab": "决策",
+      "saNoThreads": "没有订阅的线程。",
+      "saNoDecisions": "没有决策记录。",
+      "saUnsubscribe": "取消订阅",
+      "saDismiss": "忽略",
+      "saActionDone": "操作完成。",
+      "saThreadTickets": "关联工单",
+      "saPendingCount": "待处理 {n}",
+      "saDecisionAccept": "受理",
+      "saDecisionIgnore": "忽略",
+      "saDecisionUnavailable": "不可用",
+      "saReason": "原因",
+      "saSetupDir": "状态目录",
+      "saAccounts": "账号",
+      "saHealth": "健康",
+      "saLoad": "执行器负载",
+      "saActiveWorkers": "活跃 {n}/{m}",
+      "saActiveWorkersLabel": "活跃执行器",
+      "saProblems": "需要处理",
+      "saNoProblems": "没有发现运行问题。",
+      "saSetup": "环境与账号",
+      "saMaster": "主会话",
+      "saPaused": "执行器已暂停",
+      "saRunning": "执行器运行中",
+      "saSourceEnabled": "已启用",
+      "saSourceDisabled": "已停用",
+      "saReceived": "24h 收到",
+      "saFiltered": "已过滤",
+      "saLastAt": "最近",
+      "saSaveChanges": "保存",
+      "saSaving": "保存中…",
+      "saRevision": "修订 {n}",
+      "saRestartHint": "保存后 SA 可能按配置重启。",
+      "saEnabled": "启用",
+      "saAdvanced": "高级字段",
+      "saAddRow": "添加一行",
+      "saRemoveRow": "删除",
+      "saPromptsTeam": "团队提示词",
+      "saPromptsSkills": "技能",
+      "saPromptsOverrides": "内置片段覆盖",
+      "saPromptsHistory": "修订历史",
+      "saPromptsCurrent": "当前",
+      "saPromptsDefault": "内置默认",
+      "saAddSkill": "添加技能",
+      "saAdvancedJson": "高级 JSON",
+      "saNoSources": "没有已注册的来源。",
+      "saRefreshLabels": "刷新成员",
+      "saPolicySync": "同步策略",
+      "saConflict": "配置已被修改：请刷新后重试。",
+      "saReady": "就绪",
+      "saStarting": "启动中",
+      "saError": "错误",
+      "saMissing": "未安装",
+      "saNoHealth": "暂无健康条目。",
+      "saNoFields": "没有可编辑字段。",
+      "saInvalidJson": "JSON 格式不正确，修正后才会保存。",
+      "saPrompt_communication": "沟通方式",
+      "saPrompt_scope": "工单范围",
+      "saPrompt_delivery": "交付要求",
+      "saNoSkills": "没有自定义技能。",
+      "saNoHistory": "没有修订历史。",
+      "saPromptsOverrides": "内置片段覆盖",
+      "saNoOverrides": "没有覆盖内置片段。",
+      "saAddOverride": "添加覆盖",
+      "saIdle": "空闲工单",
+      "saQueued": "排队",
+      "saFlow": "24 小时流程",
+      "saJudged": "已评估",
+      "saAccepted": "已受理",
+      "saDropped": "已丢弃",
+      "saPolicyVersion": "策略版本",
+      "saExecutorLabel": "执行器",
+      "saPolicyRules": "受理规则",
+      "saPolicySources": "来源策略",
+      "saRuleId": "规则 ID",
+      "saRuleName": "规则名",
+      "saRuleInstruction": "规则说明",
+      "saNewRule": "新规则",
+      "saAddRule": "添加规则",
+      "saProblemSetup": "环境尚未完成初始化",
+      "saProblemNoSource": "没有可用的来源",
+      "saProblemNoAllowed": "没有可发起工作的账号",
+      "saProblemSourceError": "来源报错",
+      "saProblemPaused": "执行器已暂停",
+      "saProblemRuntime": "运行时错误",
+      "saProblemEvalOverdue": "评估超时",
+      "saProblemEvalUnavailable": "评估不可用",
+      "saProblemOutgoing": "消息发送失败",
+      "saNoPrompts": "没有读到提示词配置。",
+      "saFieldOptional": "可选",
       "retentionTitle": "保留与清理",
       "retentionHint": "结束满 {days} 天、worker 已归档、无未提交改动、无打开 PR、未 pin 的 worktree 才可清理。session 日志永不删除。",
       "retentionAuto": "自动清理",
@@ -255,6 +365,116 @@ window.__ModuleLoader__.load({
       "saSaved": "Saved",
       "saRaw": "Raw JSON",
       "saUnavailable": "SA management API unavailable: {message}",
+      "ungroupedTitle": "Ungrouped",
+      "ungroupedHint": "DSH sessions that belong to no workspace; built from the same session catalog as the workspace cards.",
+      "ungroupedCount": "{n} ungrouped sessions",
+      "workspaceSessionCount": "{n} sessions",
+      "sessionUntitled": "Untitled session",
+      "noSessions": "No sessions.",
+      "sessionUpdated": "Updated {time}",
+      "docsTreeHint": "Browse by file hierarchy; folders can be collapsed.",
+      "repoSourceConfigured": "DSH config",
+      "repoSourceWorkspace": "Auto-detected workspace",
+      "repoSourceSaWork": "SA subproject",
+      "repoSourceSaDelivery": "SA delivery repo",
+      "repoGit": "git repository",
+      "repoNoGit": "non-git directory",
+      "repoSessionCount": "{n} sessions",
+      "saOverview": "Overview",
+      "saSourcesTab": "Sources",
+      "saSettingsTab": "Settings",
+      "saPromptsTab": "Prompts",
+      "saThreadsTab": "Threads",
+      "saDecisionsTab": "Decisions",
+      "saNoThreads": "No subscribed threads.",
+      "saNoDecisions": "No decisions yet.",
+      "saUnsubscribe": "Unsubscribe",
+      "saDismiss": "Dismiss",
+      "saActionDone": "Done.",
+      "saThreadTickets": "Tickets",
+      "saPendingCount": "{n} pending",
+      "saDecisionAccept": "accept",
+      "saDecisionIgnore": "ignore",
+      "saDecisionUnavailable": "unavailable",
+      "saReason": "Reason",
+      "saSetupDir": "State directory",
+      "saAccounts": "Accounts",
+      "saHealth": "Health",
+      "saLoad": "Executor load",
+      "saActiveWorkers": "active {n}/{m}",
+      "saActiveWorkersLabel": "Active workers",
+      "saProblems": "Needs attention",
+      "saNoProblems": "No runtime problems found.",
+      "saSetup": "Environment & accounts",
+      "saMaster": "Main session",
+      "saPaused": "Executor paused",
+      "saRunning": "Executor running",
+      "saSourceEnabled": "enabled",
+      "saSourceDisabled": "disabled",
+      "saReceived": "24h received",
+      "saFiltered": "filtered",
+      "saLastAt": "last",
+      "saSaveChanges": "Save",
+      "saSaving": "Saving…",
+      "saRevision": "r{n}",
+      "saRestartHint": "Saving may restart SA according to its setup fields.",
+      "saEnabled": "Enabled",
+      "saAdvanced": "Advanced fields",
+      "saAddRow": "Add row",
+      "saRemoveRow": "Remove",
+      "saPromptsTeam": "Team prompts",
+      "saPromptsSkills": "Skills",
+      "saPromptsOverrides": "Built-in overrides",
+      "saPromptsHistory": "Revision history",
+      "saPromptsCurrent": "current",
+      "saPromptsDefault": "built-in default",
+      "saAddSkill": "Add skill",
+      "saAdvancedJson": "Advanced JSON",
+      "saNoSources": "No sources registered.",
+      "saRefreshLabels": "Refresh members",
+      "saPolicySync": "Sync policy",
+      "saConflict": "Settings changed: refresh and try again.",
+      "saReady": "ready",
+      "saStarting": "starting",
+      "saError": "error",
+      "saMissing": "missing",
+      "saNoHealth": "No health entries.",
+      "saNoFields": "No editable fields.",
+      "saInvalidJson": "Invalid JSON; fix it before saving.",
+      "saPrompt_communication": "Communication",
+      "saPrompt_scope": "Ticket scope",
+      "saPrompt_delivery": "Delivery requirements",
+      "saNoSkills": "No custom skills.",
+      "saNoHistory": "No revision history.",
+      "saPromptsOverrides": "Built-in overrides",
+      "saNoOverrides": "No built-in overrides.",
+      "saAddOverride": "Add override",
+      "saIdle": "Idle tickets",
+      "saQueued": "Queued",
+      "saFlow": "24h flow",
+      "saJudged": "judged",
+      "saAccepted": "accepted",
+      "saDropped": "dropped",
+      "saPolicyVersion": "Policy version",
+      "saExecutorLabel": "Executor",
+      "saPolicyRules": "Admission rules",
+      "saPolicySources": "Source policy",
+      "saRuleId": "Rule ID",
+      "saRuleName": "Rule name",
+      "saRuleInstruction": "Rule instruction",
+      "saNewRule": "New rule",
+      "saAddRule": "Add rule",
+      "saProblemSetup": "Setup is not complete",
+      "saProblemNoSource": "No source available",
+      "saProblemNoAllowed": "No account may originate work",
+      "saProblemSourceError": "Source error",
+      "saProblemPaused": "Executor is paused",
+      "saProblemRuntime": "Runtime error",
+      "saProblemEvalOverdue": "Eval overdue",
+      "saProblemEvalUnavailable": "Eval unavailable",
+      "saProblemOutgoing": "Outgoing message failed",
+      "saNoPrompts": "No prompt configuration was returned.",
+      "saFieldOptional": "optional",
       "retentionTitle": "Retention & cleanup",
       "retentionHint": "Only worktrees older than {days} days whose worker is archived, clean, has no open PR and is not pinned are eligible. Session logs are never deleted.",
       "retentionAuto": "Auto cleanup",
@@ -410,6 +630,47 @@ window.__ModuleLoader__.load({
 .sawb-check.bad { color: var(--dsw-alias-label-danger, #c0392b); }
 .sawb-check.ok { color: var(--dsw-alias-label-success, #2e7d32); }
 .sawb-textarea { width: 100%; box-sizing: border-box; margin-top: 8px; padding: 8px 10px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 8px; background: var(--dsw-alias-bg-base); color: var(--dsw-alias-label-primary); font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; resize: vertical; }
+.sawb-session-list { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+.sawb-session { display: flex; align-items: center; gap: 8px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 7px; padding: 5px 8px; min-width: 0; background: var(--dsw-alias-bg-base); }
+.sawb-session-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.sawb-session-id { margin-left: auto; font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); font-size: 11px; color: var(--dsw-alias-label-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 42%; }
+.sawb-card.sawb-ungrouped { border-style: dashed; }
+.sawb-doc-tree { padding: 6px 0; }
+.sawb-doc-folder { display: flex; align-items: center; gap: 6px; width: 100%; border: 0; background: transparent; color: inherit; font: inherit; padding: 5px 16px; cursor: pointer; text-align: left; }
+.sawb-doc-folder:hover { background: var(--dsw-alias-bg-layer-2); }
+.sawb-doc-folder .sawb-caret { width: 12px; color: var(--dsw-alias-label-secondary); flex: 0 0 auto; }
+.sawb-doc-tree .sawb-doc-item { border-top: 0; padding-top: 5px; padding-bottom: 5px; }
+.sawb-doc-tree .sawb-doc-item:hover { background: var(--dsw-alias-bg-layer-2); }
+.sawb-doc-folder-name { font-weight: 600; font-size: 12px; }
+.sawb-sa-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.sawb-sa-card { border: 1px solid var(--dsw-alias-border-l1); border-radius: 10px; padding: 12px 14px; background: var(--dsw-alias-bg-layer-1); min-width: 0; }
+.sawb-sa-card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.sawb-sa-card-head h4 { margin: 0; font-size: 13px; }
+.sawb-sa-card-head .sawb-spacer { flex: 1; }
+.sawb-sa-preview { margin: 6px 0; color: var(--dsw-alias-label-primary); overflow-wrap: anywhere; }
+.sawb-sa-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; margin: 10px 0; }
+.sawb-sa-stat { border: 1px solid var(--dsw-alias-border-l1); border-radius: 8px; padding: 7px 9px; background: var(--dsw-alias-bg-base); }
+.sawb-sa-stat b { display: block; font-size: 16px; line-height: 1.25; }
+.sawb-sa-stat span { font-size: 11px; color: var(--dsw-alias-label-secondary); }
+.sawb-sa-problem { border-left: 3px solid var(--dsw-alias-state-warn-primary); padding: 5px 10px; margin-bottom: 6px; background: var(--dsw-alias-bg-layer-1); border-radius: 4px; font-size: 12px; }
+.sawb-sa-field { display: grid; grid-template-columns: minmax(120px, 34%) 1fr; gap: 4px 12px; align-items: start; padding: 6px 0; border-bottom: 1px solid var(--dsw-alias-border-l1); }
+.sawb-sa-field:last-child { border-bottom: 0; }
+.sawb-sa-field > label { font-size: 12px; color: var(--dsw-alias-label-secondary); padding-top: 4px; overflow-wrap: anywhere; }
+.sawb-sa-field input[type="text"], .sawb-sa-field input[type="number"], .sawb-sa-field select, .sawb-sa-field textarea { width: 100%; box-sizing: border-box; padding: 4px 8px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 6px; background: var(--dsw-alias-bg-base); color: var(--dsw-alias-label-primary); font: inherit; font-size: 12px; }
+.sawb-sa-field textarea { min-height: 64px; resize: vertical; font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); }
+.sawb-sa-field .sawb-hint { grid-column: 2; font-size: 11px; color: var(--dsw-alias-label-secondary); }
+.sawb-sa-savebar { display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.sawb-switch { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; }
+.sawb-switch input { width: 14px; height: 14px; accent-color: var(--dsw-alias-brand-primary); }
+.sawb-tag { display: inline-block; padding: 0 7px; border-radius: 999px; font-size: 11px; line-height: 18px; border: 1px solid currentColor; }
+.sawb-tag.ready, .sawb-tag.on { color: var(--dsw-alias-state-success-primary); }
+.sawb-tag.starting, .sawb-tag.paused { color: var(--dsw-alias-state-warn-primary); }
+.sawb-tag.error, .sawb-tag.missing { color: var(--dsw-alias-state-error-primary); }
+.sawb-tag.off { color: var(--dsw-alias-label-secondary); }
+.sawb-subtabs { display: inline-flex; gap: 2px; border-bottom: 1px solid var(--dsw-alias-border-l1); margin-bottom: 14px; }
+.sawb-subtabs button { border: 0; background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 12px; padding: 6px 12px; border-bottom: 2px solid transparent; cursor: pointer; }
+.sawb-subtabs button[aria-pressed="true"] { color: var(--dsw-alias-label-primary); border-bottom-color: var(--dsw-alias-brand-primary); }
+.sawb-sa-textarea { width: 100%; box-sizing: border-box; min-height: 110px; padding: 8px 10px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 6px; background: var(--dsw-alias-bg-base); color: var(--dsw-alias-label-primary); font: 12px/1.55 var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); resize: vertical; }
 `
 
     function StyleTag() {
@@ -704,7 +965,64 @@ window.__ModuleLoader__.load({
         ))
     }
 
-    /** 文档中心：按仓库分组列出 Markdown，点开后渲染正文。 */
+    /** 会话列表：显示标题，id 作为 tooltip/尾注；无标题时按类型给出可读占位。 */
+    function sessionName(session, t) {
+      if (session.title) return session.title
+      if (session.kind === 'orchestrator') return `${t('sessionOrchestrator')} · ${session.id.slice(0, 12)}`
+      if (session.kind === 'worker') return `${t('sessionWorker')} · ${session.id.slice(0, 12)}`
+      return t('sessionUntitled')
+    }
+
+    function SessionList({ sessions, t }) {
+      if (!sessions || sessions.length === 0) return h('div', { className: 'sawb-meta', style: { marginTop: 8 } }, t('noSessions'))
+      return h('div', { className: 'sawb-session-list' }, sessions.map(session =>
+        h('div', { key: session.id, className: 'sawb-session', title: `${session.id}\n${session.cwd || ''}`.trim() },
+          session.archived ? badge(t('sessionArchived'), 'muted') : null,
+          session.pinned ? badge(t('sessionPinned'), 'muted') : null,
+          h('span', { className: 'sawb-session-name' }, sessionName(session, t)),
+          h('span', { className: 'sawb-session-id' }, session.id))))
+    }
+
+    /** 把 flat docs 构造成目录树；只在前端派生，不改变 Host 返回结构。 */
+    function buildDocTree(docs) {
+      const root = { dirs: new Map(), files: [] }
+      for (const item of docs) {
+        const parts = String(item.path || '').split('/').filter(Boolean)
+        let node = root
+        parts.slice(0, -1).forEach(part => {
+          if (!node.dirs.has(part)) node.dirs.set(part, { name: part, dirs: new Map(), files: [] })
+          node = node.dirs.get(part)
+        })
+        const name = parts[parts.length - 1] || item.path
+        node.files.push({ ...item, name })
+      }
+      return root
+    }
+
+    function DocFolder({ name, node, depth, repo, t, onOpen }) {
+      const [open, setOpen] = React.useState(depth < 1)
+      return h(React.Fragment, null,
+        h('button', { type: 'button', className: 'sawb-doc-folder', style: { paddingLeft: 16 + depth * 18 }, onClick: () => setOpen(value => !value) },
+          h('span', { className: 'sawb-caret' }, open ? '▾' : '▸'),
+          h('span', { className: 'sawb-doc-folder-name' }, name),
+          badge(String(node.dirs.size + node.files.length), 'muted')),
+        open ? h(DocTree, { node, depth: depth + 1, repo, t, onOpen }) : null)
+    }
+
+    function DocTree({ node, depth, repo, t, onOpen }) {
+      const dirs = [...node.dirs.values()].sort((left, right) => left.name.localeCompare(right.name))
+      const files = [...node.files].sort((left, right) => left.path.localeCompare(right.path))
+      return h('div', { className: 'sawb-doc-tree' },
+        dirs.map(dir => h(DocFolder, { key: `dir:${dir.name}`, name: dir.name, node: dir, depth, repo, t, onOpen })),
+        files.map(item => h('button', {
+          key: item.path, type: 'button', className: 'sawb-doc-item', style: { paddingLeft: 16 + depth * 18 }, title: item.path,
+          onClick: () => onOpen(repo, item.path),
+        },
+          h('span', { className: 'sawb-doc-title' }, item.title || item.name),
+          h('span', { className: 'sawb-doc-path' }, item.path))))
+    }
+
+    /** 文档中心：按仓库 + 文件目录层级展示 Markdown，点开后渲染正文。 */
     function DocsView({ t, section, onSection }) {
       const [index, setIndex] = React.useState({ phase: 'loading', groups: [], error: '' })
       const [doc, setDoc] = React.useState({ phase: 'idle', repo: undefined, data: undefined, error: '' })
@@ -752,7 +1070,7 @@ window.__ModuleLoader__.load({
       return h(React.Fragment, null,
         h('div', { className: 'sawb-head' },
           h('h2', { className: 'sawb-title' }, t('docsTitle')),
-          h('span', { className: 'sawb-meta' }, t('docsHint')),
+          h('span', { className: 'sawb-meta' }, t('docsTreeHint')),
           h('span', { className: 'sawb-spacer' }),
           h('span', { className: 'sawb-meta' }, t('docsCount', { n: total })),
           h(Tabs, { section, t, onSection })),
@@ -768,14 +1086,8 @@ window.__ModuleLoader__.load({
                       h('div', { className: 'sawb-doc-group-title' },
                         h('span', null, group.repo.name),
                         badge(t('docsCount', { n: group.docs.length }), 'muted')),
-                      group.docs.map(item => h('button', {
-                        key: item.path, type: 'button', className: 'sawb-doc-item', onClick: () => openDoc(group.repo, item.path),
-                      },
-                        h('span', { className: 'sawb-doc-title' }, item.title || item.path),
-                        h('span', { className: 'sawb-doc-path', title: item.path }, item.path)))))))
-      )
+                      h(DocTree, { node: buildDocTree(group.docs), depth: 0, repo: group.repo, t, onOpen: openDoc }))))))
     }
-
 
     /** 读取 SA 管理接口；只走 Host 同源代理，不在浏览器直连 3080 之外的端口。 */
     function saRequest(method, path, body) {
@@ -793,7 +1105,7 @@ window.__ModuleLoader__.load({
       })
     }
 
-    /** 工作区页：DSH Host 是 workspace.json 的唯一写者，这里只读展示。 */
+    /** 工作区页：DSH Host 是 workspace.json 的唯一写者，这里只读展示全部工作区与未分组。 */
     function WorkspacesView({ t, section, onSection }) {
       const [state, setState] = React.useState({ phase: 'loading', data: undefined, error: '' })
       const load = React.useCallback(signal => {
@@ -811,12 +1123,14 @@ window.__ModuleLoader__.load({
         return () => controller.abort()
       }, [load])
       const workspaces = (state.data && state.data.workspaces) || []
+      const ungrouped = (state.data && state.data.ungrouped && state.data.ungrouped.sessions) || []
+      const totalSessions = workspaces.reduce((sum, workspace) => sum + workspace.sessions.length, 0) + ungrouped.length
       return h(React.Fragment, null,
         h('div', { className: 'sawb-head' },
           h('h2', { className: 'sawb-title' }, t('workspacesTitle')),
           h('span', { className: 'sawb-meta' }, t('workspacesHint')),
           h('span', { className: 'sawb-spacer' }),
-          h('span', { className: 'sawb-meta' }, t('workspaceCount', { n: workspaces.length })),
+          h('span', { className: 'sawb-meta' }, `${t('workspaceCount', { n: workspaces.length })} · ${t('workspaceSessionCount', { n: totalSessions })}`),
           h(Tabs, { section, t, onSection }),
           h('button', { type: 'button', className: 'sawb-btn', onClick: () => load() }, t('refresh'))),
         h('div', { className: 'sawb-body' },
@@ -824,23 +1138,24 @@ window.__ModuleLoader__.load({
             ? h(Notice, { tone: 'error' }, t('readFailed', { message: state.error }))
             : !state.data
               ? h('div', { className: 'sawb-empty' }, t('loadingData'))
-              : workspaces.length === 0
-                ? h('div', { className: 'sawb-empty' }, t('noWorkspaces'))
-                : h('div', { className: 'sawb-grid' }, workspaces.map(workspace => h('article', { key: workspace.id, className: 'sawb-card' },
-                    h('h3', null, workspace.title || workspace.id),
-                    h('dl', { className: 'sawb-kv' },
-                      h('dt', null, t('workspacePath')), h('dd', { className: 'sawb-mono', title: workspace.path }, workspace.path),
-                      h('dt', null, t('workspaceCreated')), h('dd', null, when(workspace.createdAt))),
-                    workspace.exists === false ? h(Notice, { tone: 'error' }, t('workspaceMissing')) : null,
-                    h('div', { className: 'sawb-chips' },
-                      h('span', { className: 'sawb-chip' }, `${t('workspaceSessions')} ${workspace.sessions.length}`),
-                      workspace.archivedCount ? h('span', { className: 'sawb-chip' }, `${t('sessionArchived')} ${workspace.archivedCount}`) : null,
-                      workspace.pinnedCount ? h('span', { className: 'sawb-chip' }, `${t('sessionPinned')} ${workspace.pinnedCount}`) : null),
-                    workspace.sessions.length > 0
-                      ? h('div', { className: 'sawb-chips' }, workspace.sessions.map(session => h('span', { key: session.id, className: 'sawb-chip', title: session.id },
-                          `${session.kind === 'orchestrator' ? t('sessionOrchestrator') : session.kind === 'worker' ? t('sessionWorker') : t('sessionNormal')}${session.archived ? ` · ${t('sessionArchived')}` : ''}`)))
-                      : null))))
-      )
+              : h(React.Fragment, null,
+                  state.data.sessionError ? h(Notice, null, state.data.sessionError) : null,
+                  h('div', { className: 'sawb-grid' },
+                    workspaces.map(workspace => h('article', { key: workspace.id, className: 'sawb-card' },
+                      h('h3', null, workspace.title || workspace.id),
+                      h('dl', { className: 'sawb-kv' },
+                        h('dt', null, t('workspacePath')), h('dd', { className: 'sawb-mono', title: workspace.path }, workspace.path),
+                        h('dt', null, t('workspaceCreated')), h('dd', null, when(workspace.createdAt))),
+                      workspace.exists === false ? h(Notice, { tone: 'error' }, t('workspaceMissing')) : null,
+                      h('div', { className: 'sawb-chips' },
+                        h('span', { className: 'sawb-chip' }, t('workspaceSessionCount', { n: workspace.sessions.length })),
+                        workspace.git ? h('span', { className: 'sawb-chip' }, t('repoGit')) : null),
+                      h(SessionList, { sessions: workspace.sessions, t }))),
+                    h('article', { key: '__ungrouped', className: 'sawb-card sawb-ungrouped' },
+                      h('h3', null, t('ungroupedTitle')),
+                      h('p', { className: 'sawb-meta' }, t('ungroupedHint')),
+                      h('div', { className: 'sawb-chips' }, h('span', { className: 'sawb-chip' }, t('ungroupedCount', { n: ungrouped.length }))),
+                      h(SessionList, { sessions: ungrouped, t }))))))
     }
 
     /** JSON 编辑器：用于 settings 块与 prompts，保存必须带 revision 防止覆盖并发修改。 */
@@ -930,18 +1245,365 @@ window.__ModuleLoader__.load({
               `${when(entry.at)} · ${entry.ticket || ''} · ${entry.action || ''} · ${entry.dir || ''}`))))
     }
 
-    /** SA 控制页：读 state/sources/settings/prompts；写操作全部走代理。 */
+    function localized(value, fallback) {
+      if (value === undefined || value === null) return fallback || ''
+      if (typeof value === 'string') return value
+      return value.zh || value.en || fallback || ''
+    }
+
+    function cloneJson(value) {
+      try { return JSON.parse(JSON.stringify(value)) } catch { return value }
+    }
+
+    function SaTag({ state, t }) {
+      const labels = { ready: t('saReady'), on: t('saSourceEnabled'), off: t('saSourceDisabled'), starting: t('saStarting'), paused: t('saPaused'), error: t('saError'), missing: t('saMissing'), setup: t('saSetup') }
+      return h('span', { className: `sawb-tag ${state || ''}` }, labels[state] || state || '—')
+    }
+
+    function SaProblem({ problem, t }) {
+      const kind = problem.kind || ''
+      const text = {
+        setup: t('saProblemSetup'), 'no-source': t('saProblemNoSource'), 'no-allowed': t('saProblemNoAllowed'),
+        'source-error': t('saProblemSourceError'), 'executor-paused': t('saProblemPaused'), 'runtime-error': t('saProblemRuntime'),
+        'eval-overdue': t('saProblemEvalOverdue'), 'eval-unavailable': t('saProblemEvalUnavailable'), outgoing: t('saProblemOutgoing'),
+      }[kind] || kind
+      const detail = localized(problem.detail || problem.message || problem.source && problem.source.health && problem.source.health.detail || problem.name || '')
+      return h('div', { className: 'sawb-sa-problem' },
+        h('strong', null, text || kind),
+        detail ? h('div', { className: 'sawb-meta' }, detail) : null)
+    }
+
+    function SaStat({ label, value }) {
+      return h('div', { className: 'sawb-sa-stat' }, h('b', null, value === undefined || value === null || value === '' ? '—' : value), h('span', null, label))
+    }
+
+    function SaHealthList({ health, t }) {
+      const items = health && !Array.isArray(health)
+        ? Object.entries(health).map(([name, item]) => ({ name, ...(item || {}) }))
+        : (health || [])
+      if (items.length === 0) return h('div', { className: 'sawb-meta' }, t('saNoHealth'))
+      return h('div', { className: 'sawb-session-list' }, items.map((item, index) => h('div', { key: `${item.name || index}`, className: 'sawb-session' },
+        SaTag({ state: item.state === 'ready' ? 'ready' : item.state, t }),
+        h('span', { className: 'sawb-session-name' }, item.name || ''),
+        h('span', { className: 'sawb-session-id' }, item.detail || item.at || ''))))
+    }
+
+    function SaRowsEditor({ field, value, t, onChange }) {
+      const rows = Array.isArray(value) ? value : []
+      const columns = field.columns || []
+      const update = (index, key, cell) => {
+        const next = rows.map(row => ({ ...row }))
+        next[index] = { ...next[index], [key]: cell }
+        onChange(next)
+      }
+      return h('div', null,
+        rows.map((row, index) => h('div', { key: index, className: 'sawb-session', style: { alignItems: 'flex-start', flexWrap: 'wrap' } },
+          columns.map(column => h('label', { key: column.key, className: 'sawb-meta', style: { flex: '1 1 140px', minWidth: 0 } },
+            h('span', null, localized(column.label, column.key)),
+            column.type === 'select'
+              ? h('select', { value: String(row[column.key] || ''), onChange: event => update(index, column.key, event.target.value) },
+                  (column.options || []).map(option => h('option', { key: option.value, value: option.value }, localized(option.label, option.value))))
+              : h('input', { type: 'text', value: String(row[column.key] === undefined ? '' : row[column.key]), onChange: event => update(index, column.key, event.target.value) }))),
+          h('button', { type: 'button', className: 'sawb-btn sawb-btn-sm', onClick: () => onChange(rows.filter((_, at) => at !== index)) }, t('saRemoveRow')))),
+        h('div', { className: 'sawb-actions' },
+          h('button', { type: 'button', className: 'sawb-btn sawb-btn-sm', onClick: () => {
+            const row = {}
+            for (const column of columns) row[column.key] = column.type === 'select' ? (column.options && column.options[0] ? column.options[0].value : '') : ''
+            onChange([...rows, row])
+          } }, t('saAddRow'))))
+    }
+
+    /** 是否有关联字段支持从来源刷新选项（例如飞书群/成员名单）。 */
+    function hasRefreshFields(fields) {
+      return (fields || []).some(field => (field.columns || []).some(column => Boolean(column.refresh)))
+    }
+
+    function SaJsonField({ value, onChange }) {
+      const [text, setText] = React.useState(JSON.stringify(value === undefined ? null : value, null, 2))
+      const [bad, setBad] = React.useState(false)
+      React.useEffect(() => { setText(JSON.stringify(value === undefined ? null : value, null, 2)); setBad(false) }, [value])
+      return h('div', null,
+        h('textarea', { className: 'sawb-sa-textarea', value: text, spellCheck: false, onChange: event => {
+          setText(event.target.value)
+          try { onChange(JSON.parse(event.target.value)); setBad(false) } catch { setBad(true) }
+        } }),
+        bad ? h('div', { className: 'sawb-meta' }, t('saInvalidJson')) : null)
+    }
+
+    function inferFields(value) {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) return []
+      return Object.keys(value).map(key => ({
+        key,
+        label: { zh: key, en: key },
+        type: key === 'mode' ? 'select'
+          : key === 'blockedCommands' ? 'json'
+          : typeof value[key] === 'boolean' ? 'switch'
+          : typeof value[key] === 'number' ? 'number'
+          : typeof value[key] === 'string' ? 'text' : 'json',
+        ...key === 'mode' ? { options: [
+          { value: 'off', label: { zh: '关闭', en: 'Off' } },
+          { value: 'observe', label: { zh: '观察', en: 'Observe' } },
+          { value: 'auto', label: { zh: '自动', en: 'Auto' } },
+        ] } : {},
+      }))
+    }
+
+    function SaFieldEditor({ field, value, facts, t, onChange }) {
+      const label = localized(field.label, field.key)
+      let control
+      if (field.type === 'switch') {
+        control = h('label', { className: 'sawb-switch' },
+          h('input', { type: 'checkbox', checked: Boolean(value), onChange: event => onChange(event.target.checked) }), t('saEnabled'))
+      } else if (field.type === 'select') {
+        control = h('select', { value: String(value === undefined ? '' : value), onChange: event => onChange(event.target.value) },
+          (field.options || []).map(option => h('option', { key: option.value, value: option.value }, localized(option.label, option.value))))
+      } else if (field.type === 'number') {
+        control = h('input', { type: 'number', min: field.min, max: field.max, value: Number(value || 0), onChange: event => onChange(Number(event.target.value)) })
+      } else if (field.type === 'fact') {
+        control = h('span', { className: 'sawb-mono' }, localized(facts && facts[field.key], '—'))
+      } else if (field.type === 'json') {
+        control = h(SaJsonField, { value, onChange })
+      } else if (field.type === 'rows') {
+        control = h(SaRowsEditor, { field, value, t, onChange })
+      } else {
+        control = h('input', { type: 'text', value: String(value === undefined ? '' : value), pattern: field.pattern, onChange: event => onChange(event.target.value) })
+      }
+      return h('div', { className: 'sawb-sa-field' },
+        h('label', null, label, field.advanced ? h('span', { className: 'sawb-meta' }, ` · ${t('saFieldOptional')}`) : null),
+        control,
+        field.hint ? h('span', { className: 'sawb-hint' }, localized(field.hint)) : null)
+    }
+
+    /** 设置块表单：动态渲染 SA 的 FieldSpec；保存必须带 revision。 */
+    function SaSettingsForm({ title, value, revision, fields, facts, restarts, problem, source, t, onSave }) {
+      const [draft, setDraft] = React.useState(() => cloneJson(value))
+      const [advanced, setAdvanced] = React.useState(false)
+      const [notice, setNotice] = React.useState('')
+      React.useEffect(() => { setDraft(cloneJson(value)); setNotice('') }, [value, revision])
+      const hasAdvanced = (fields || []).some(field => field.advanced)
+      const setField = (key, nextValue) => setDraft(previous => {
+        const next = cloneJson(previous) || {}
+        if (source) {
+          next.config = next.config || {}
+          next.config[key] = nextValue
+        } else {
+          next[key] = nextValue
+        }
+        return next
+      })
+      const save = () => {
+        setNotice(t('saSaving'))
+        Promise.resolve(onSave(cloneJson(draft), revision))
+          .then(() => setNotice(t('saSaved')))
+          .catch(error => setNotice(errorText(error)))
+      }
+      const rows = (fields || []).filter(field => advanced || !field.advanced)
+      return h('section', { className: 'sawb-section' },
+        h('div', { className: 'sawb-sa-card' },
+          h('div', { className: 'sawb-sa-card-head' },
+            h('h4', null, title),
+            badge(t('saRevision', { n: revision }), 'muted'),
+            problem ? SaTag({ state: 'error', t }) : null,
+            h('span', { className: 'sawb-spacer' }),
+            source ? h('label', { className: 'sawb-switch' },
+              h('input', { type: 'checkbox', checked: Boolean(draft && draft.enabled), onChange: event => setDraft(previous => ({ ...previous, enabled: event.target.checked })) }),
+              t('saEnabled')) : null),
+          problem ? h(Notice, { tone: 'error' }, localized(problem, String(problem))) : null,
+          rows.length === 0
+            ? h('div', null,
+                h('div', { className: 'sawb-meta' }, t('saNoFields')),
+                h(SaJsonField, { value: draft, onChange: next => setDraft(next) }))
+            : rows.map(field => h(SaFieldEditor, {
+                key: field.key, field, facts,
+                value: source ? draft && draft.config && draft.config[field.key] : draft && draft[field.key],
+                t, onChange: next => setField(field.key, next),
+              })),
+          hasAdvanced ? h('div', { className: 'sawb-actions' },
+            h('button', { type: 'button', className: 'sawb-btn sawb-btn-sm', 'aria-pressed': String(advanced), onClick: () => setAdvanced(value => !value) }, t('saAdvanced'))) : null,
+          h('div', { className: 'sawb-sa-savebar' },
+            h('button', { type: 'button', className: 'sawb-btn', onClick: save }, t('saSaveChanges')),
+            restarts && restarts.length > 0 ? h('span', { className: 'sawb-meta' }, t('saRestartHint')) : null,
+            notice ? h('span', { className: 'sawb-meta' }, notice) : null)))
+    }
+
+    /** 策略表单：规则与按来源拆分的 policy.fields，保存时提交整个 policy 块。 */
+    function SaPolicyEditor({ block, sources, t, onSave }) {
+      const [draft, setDraft] = React.useState(() => cloneJson(block.value))
+      const [notice, setNotice] = React.useState('')
+      React.useEffect(() => { setDraft(cloneJson(block.value)); setNotice('') }, [block.value, block.revision])
+      const setField = (sourceId, key, nextValue) => setDraft(previous => {
+        const next = cloneJson(previous) || {}
+        next.sources = next.sources || {}
+        next.sources[sourceId] = { ...(next.sources[sourceId] || {}), [key]: nextValue }
+        return next
+      })
+      const setRule = (index, key, nextValue) => setDraft(previous => {
+        const next = cloneJson(previous) || {}
+        const rules = [...(next.rules || [])]
+        rules[index] = { ...(rules[index] || {}), [key]: nextValue }
+        return { ...next, rules }
+      })
+      const addRule = () => setDraft(previous => {
+        const next = cloneJson(previous) || {}
+        return { ...next, rules: [...(next.rules || []), { id: `rule-${Date.now()}`, name: t('saNewRule'), enabled: true, instruction: '' }] }
+      })
+      const removeRule = index => setDraft(previous => {
+        const next = cloneJson(previous) || {}
+        return { ...next, rules: (next.rules || []).filter((_, at) => at !== index) }
+      })
+      const save = () => {
+        setNotice(t('saSaving'))
+        Promise.resolve(onSave(cloneJson(draft), block.revision))
+          .then(() => setNotice(t('saSaved')))
+          .catch(error => setNotice(errorText(error)))
+      }
+      const rules = (draft && draft.rules) || []
+      const withPolicy = (sources || []).filter(source => source.policy && (source.policy.fields || []).length > 0)
+      return h('section', { className: 'sawb-section' },
+        h('h3', null, t('saPolicyRules'), badge(`${rules.length}`, 'muted'), badge(t('saRevision', { n: block.revision }), 'muted')),
+        h('div', { className: 'sawb-sa-grid' }, rules.map((rule, index) => h('div', { key: rule.id || index, className: 'sawb-sa-card' },
+          h('div', { className: 'sawb-sa-card-head' }, h('h4', null, rule.name || rule.id || t('saNewRule')),
+            h('label', { className: 'sawb-switch' },
+              h('input', { type: 'checkbox', checked: Boolean(rule.enabled), onChange: event => setRule(index, 'enabled', event.target.checked) }), t('saEnabled')),
+            h('span', { className: 'sawb-spacer' }),
+            h('button', { type: 'button', className: 'sawb-btn sawb-btn-sm', onClick: () => removeRule(index) }, t('saRemoveRow'))),
+          h('div', { className: 'sawb-sa-field' }, h('label', null, t('saRuleId')),
+            h('input', { type: 'text', value: String(rule.id || ''), onChange: event => setRule(index, 'id', event.target.value) })),
+          h('div', { className: 'sawb-sa-field' }, h('label', null, t('saRuleName')),
+            h('input', { type: 'text', value: String(rule.name || ''), onChange: event => setRule(index, 'name', event.target.value) })),
+          h('div', { className: 'sawb-sa-field' }, h('label', null, t('saRuleInstruction')),
+            h('textarea', { className: 'sawb-sa-textarea', value: String(rule.instruction || ''), onChange: event => setRule(index, 'instruction', event.target.value) }))))),
+        h('div', { className: 'sawb-actions' }, h('button', { type: 'button', className: 'sawb-btn sawb-btn-sm', onClick: addRule }, t('saAddRule'))),
+        h('h3', null, t('saPolicySources'), badge(t('saRevision', { n: block.revision }), 'muted')),
+        h('div', { className: 'sawb-sa-grid' }, withPolicy.map(source => {
+          const part = (draft && draft.sources && draft.sources[source.id]) || {}
+          return h('div', { key: source.id, className: 'sawb-sa-card' },
+            h('div', { className: 'sawb-sa-card-head' }, h('h4', null, localized(source.title, source.id)),
+              source.policy.sync ? badge(t('saPolicySync'), source.policy.sync.ready ? 'ok' : 'muted') : null),
+            source.policy.explicit ? h('p', { className: 'sawb-meta' }, localized(source.policy.explicit)) : null,
+            (source.policy.fields || []).map(field => h(SaFieldEditor, {
+              key: field.key, field, value: part[field.key], t,
+              onChange: next => setField(source.id, field.key, next),
+            })))
+        })),
+        h('div', { className: 'sawb-sa-savebar' },
+          h('button', { type: 'button', className: 'sawb-btn', onClick: save }, t('saSaveChanges')),
+          notice ? h('span', { className: 'sawb-meta' }, notice) : null))
+    }
+
+    /** 提示词编辑器：团队三段、技能、内置片段覆盖与修订历史。 */
+    function SaPromptsEditor({ prompts, t, onSave }) {
+      const current = prompts && prompts.current
+      const [draft, setDraft] = React.useState(() => cloneJson(current && current.config))
+      const [notice, setNotice] = React.useState('')
+      const [newSkill, setNewSkill] = React.useState('')
+      const [newOverride, setNewOverride] = React.useState('')
+      React.useEffect(() => { setDraft(cloneJson(current && current.config)); setNotice('') }, [current && current.revision])
+      if (!current) return h('div', { className: 'sawb-empty' }, t('saNoPrompts'))
+      const config = draft || {}
+      const update = (key, value) => setDraft(previous => ({ ...previous, [key]: value }))
+      const updateSkill = (name, value) => setDraft(previous => ({ ...previous, skills: { ...(previous.skills || {}), [name]: value } }))
+      const removeSkill = name => setDraft(previous => {
+        const skills = { ...(previous.skills || {}) }
+        delete skills[name]
+        return { ...previous, skills }
+      })
+      const addSkill = () => {
+        const name = newSkill.trim()
+        if (!name) return
+        updateSkill(name, '')
+        setNewSkill('')
+      }
+      const updateOverride = (name, text) => setDraft(previous => ({
+        ...previous,
+        overrides: { ...(previous.overrides || {}), [name]: { ...((previous.overrides || {})[name] || {}), text } },
+      }))
+      const removeOverride = name => setDraft(previous => {
+        const overrides = { ...(previous.overrides || {}) }
+        delete overrides[name]
+        return { ...previous, overrides }
+      })
+      const addOverride = () => {
+        const name = newOverride
+        if (!name) return
+        const part = (prompts.parts || []).find(item => item.key === name)
+        setDraft(previous => ({
+          ...previous,
+          overrides: { ...(previous.overrides || {}), [name]: { text: '', ...(part && part.base ? { base: part.base } : {}) } },
+        }))
+        setNewOverride('')
+      }
+      const save = () => {
+        setNotice(t('saSaving'))
+        Promise.resolve(onSave(cloneJson(config), current.revision))
+          .then(() => setNotice(t('saSaved')))
+          .catch(error => setNotice(errorText(error)))
+      }
+      const skillEntries = Object.entries(config.skills || {})
+      return h(React.Fragment, null,
+        h('section', { className: 'sawb-section' },
+          h('div', { className: 'sawb-sa-card' },
+            h('div', { className: 'sawb-sa-card-head' },
+              h('h4', null, t('saPromptsTeam')),
+              badge(t('saRevision', { n: current.revision }), 'muted'),
+              prompts.defaultChanged ? badge(t('saPromptsDefault'), 'muted') : null,
+              h('span', { className: 'sawb-spacer' })),
+            ['communication', 'scope', 'delivery'].map(key => h('div', { key, className: 'sawb-sa-field' },
+              h('label', null, t(`saPrompt_${key}`)),
+              h('textarea', { className: 'sawb-sa-textarea', value: String(config[key] || ''), onChange: event => update(key, event.target.value) }))),
+            h('div', { className: 'sawb-sa-savebar' },
+              h('button', { type: 'button', className: 'sawb-btn', onClick: save }, t('saSaveChanges')),
+              notice ? h('span', { className: 'sawb-meta' }, notice) : null))),
+        h('section', { className: 'sawb-section' },
+          h('div', { className: 'sawb-sa-card' },
+            h('div', { className: 'sawb-sa-card-head' }, h('h4', null, t('saPromptsSkills')), badge(String(skillEntries.length), 'muted')),
+            skillEntries.length === 0 ? h('div', { className: 'sawb-meta' }, t('saNoSkills')) : null,
+            skillEntries.map(([name, text]) => h('div', { key: name, className: 'sawb-sa-field' },
+              h('label', null, name),
+              h('div', null,
+                h('textarea', { className: 'sawb-sa-textarea', value: String(text || ''), onChange: event => updateSkill(name, event.target.value) }),
+                h('button', { type: 'button', className: 'sawb-btn sawb-btn-sm', onClick: () => removeSkill(name) }, t('saRemoveRow'))))),
+            h('div', { className: 'sawb-actions' },
+              h('input', { type: 'text', className: 'sawb-textarea', style: { maxWidth: 220, marginTop: 0 }, placeholder: t('saAddSkill'), value: newSkill, onChange: event => setNewSkill(event.target.value) }),
+              h('button', { type: 'button', className: 'sawb-btn', onClick: addSkill }, t('saAddSkill'))))),
+        h('section', { className: 'sawb-section' },
+          h('div', { className: 'sawb-sa-card' },
+            h('div', { className: 'sawb-sa-card-head' }, h('h4', null, t('saPromptsOverrides')), badge(String(Object.keys(config.overrides || {}).length), 'muted')),
+            Object.keys(config.overrides || {}).length === 0 ? h('div', { className: 'sawb-meta' }, t('saNoOverrides')) : null,
+            Object.entries(config.overrides || {}).map(([name, override]) => h('div', { key: name, className: 'sawb-sa-field' },
+              h('label', null, name),
+              h('textarea', { className: 'sawb-sa-textarea', value: String(override && override.text || ''), onChange: event => updateOverride(name, event.target.value) }),
+              h('button', { type: 'button', className: 'sawb-btn sawb-btn-sm', onClick: () => removeOverride(name) }, t('saRemoveRow')))),
+            h('div', { className: 'sawb-actions' },
+              h('select', { value: newOverride, onChange: event => setNewOverride(event.target.value) },
+                h('option', { value: '' }, t('saAddOverride')),
+                (prompts.parts || []).map(part => h('option', { key: part.key, value: part.key }, part.key))),
+              h('button', { type: 'button', className: 'sawb-btn', onClick: addOverride }, t('saAddOverride'))))),
+        h('section', { className: 'sawb-section' },
+          h('details', { className: 'sawb-sa-card' },
+            h('summary', null, t('saPromptsHistory'), current.savedAt ? badge(when(current.savedAt), 'muted') : null),
+            (prompts.revisions || []).length === 0 ? h('div', { className: 'sawb-meta' }, t('saNoHistory')) : null,
+            (prompts.revisions || []).map(item => h('div', { key: item.revision, className: 'sawb-meta sawb-mono' },
+              `r${item.revision} · ${when(item.savedAt)} · ${item.source || ''} · ${(item.changed || []).join(', ')}`)))))
+    }
+
+    /** SA 控制页：读 state/overview/sources/settings/prompts；写操作全部走同源代理。 */
     function SaView({ t, section, onSection }) {
       const [state, setState] = React.useState({ phase: 'loading', data: undefined, error: '' })
+      const [tab, setTab] = React.useState('overview')
+      const [actionNotice, setActionNotice] = React.useState('')
       const load = React.useCallback(signal => {
         setState(previous => ({ phase: 'loading', data: previous.data, error: '' }))
         Promise.all([
           saRequest('GET', 'state'),
+          saRequest('GET', 'overview'),
           saRequest('GET', 'sources'),
           saRequest('GET', 'settings'),
           saRequest('GET', 'prompts'),
-        ]).then(([status, sources, settings, prompts]) => {
-          setState({ phase: 'ready', data: { status, sources, settings, prompts }, error: '' })
+          saRequest('GET', 'threads'),
+          saRequest('GET', 'decisions'),
+        ]).then(([status, overview, sources, settings, prompts, threads, decisions]) => {
+          setState({ phase: 'ready', data: { status, overview, sources, settings, prompts, threads, decisions }, error: '' })
         }).catch(error => {
           if (error && error.name === 'AbortError') return
           setState({ phase: 'error', data: undefined, error: errorText(error) })
@@ -953,13 +1615,173 @@ window.__ModuleLoader__.load({
         return () => controller.abort()
       }, [load])
       const call = (method, path, body) => saRequest(method, path, body).then(data => { load(); return data })
+      /** 按钮类写操作：失败显示在操作条，不抛未处理 rejection。 */
+      const act = (method, path, body) => saRequest(method, path, body).then(data => {
+        setActionNotice(t('saActionDone'))
+        load()
+        return data
+      }, error => {
+        setActionNotice(errorText(error))
+        return undefined
+      })
       const data = state.data
+      const status = data && data.status
+      const overview = data && data.overview
+      const paused = Boolean(status && status.paused)
+      const health = status && status.health
+      const settingsSources = (data && data.settings && data.settings.sources) || []
+      const sourceCards = ((data && data.sources) || []).map(source => ({ ...source, settings: settingsSources.find(item => item.id === source.id) }))
+      const tabs = [['overview', t('saOverview')], ['sources', t('saSourcesTab')], ['threads', t('saThreadsTab')], ['decisions', t('saDecisionsTab')], ['settings', t('saSettingsTab')], ['prompts', t('saPromptsTab')]]
+      const tabButton = key => h('button', { key, type: 'button', 'aria-pressed': String(tab === key), onClick: () => setTab(key) }, tabs.find(item => item[0] === key)[1])
+      let body = null
+      if (tab === 'overview') {
+        const loadInfo = (status && status.load) || {}
+        const flow = (overview && overview.flow) || {}
+        const machine = status && status.setup && status.setup.machine
+        const accounts = status && status.setup && status.setup.accounts
+        const accountText = [accounts && accounts.repository, accounts && accounts.agent,
+          accounts && accounts.feishu && accounts.feishu.name].filter(Boolean).join(' · ')
+        body = h(React.Fragment, null,
+          h('section', { className: 'sawb-section' },
+            h('div', { className: 'sawb-sa-grid' },
+              h('div', { className: 'sawb-sa-card' },
+                h('div', { className: 'sawb-sa-card-head' }, h('h4', null, t('saState')), SaTag({ state: paused ? 'paused' : 'ready', t }), h('span', { className: 'sawb-spacer' }), badge(status && status.masterId || '—', 'muted')),
+                h('dl', { className: 'sawb-kv' },
+                  h('dt', null, t('saMaster')), h('dd', { className: 'sawb-mono' }, status && status.masterId || '—'),
+                  h('dt', null, t('saExecutorLabel')), h('dd', null, paused ? t('saPaused') : t('saRunning')),
+                  h('dt', null, t('saSetupDir')), h('dd', { className: 'sawb-mono', title: machine && machine.stateDir || '' }, machine && machine.stateDir || '—'),
+                  h('dt', null, t('saAccounts')), h('dd', null, accountText || '—')),
+                h('div', { className: 'sawb-sa-stats' },
+                  h(SaStat, { label: t('saActiveWorkersLabel'), value: `${loadInfo.running ?? loadInfo.active ?? 0}/${loadInfo.maxWorkers || 0}` }),
+                  h(SaStat, { label: t('saIdle'), value: loadInfo.idle || 0 }),
+                  h(SaStat, { label: t('saQueued'), value: loadInfo.queued || 0 }))),
+              h('div', { className: 'sawb-sa-card' },
+                h('div', { className: 'sawb-sa-card-head' }, h('h4', null, t('saFlow')), h('span', { className: 'sawb-spacer' })),
+                h('div', { className: 'sawb-sa-stats' },
+                  h(SaStat, { label: t('saReceived'), value: flow.received || 0 }),
+                  h(SaStat, { label: t('saFiltered'), value: flow.filtered || 0 }),
+                  h(SaStat, { label: t('saJudged'), value: flow.judged || 0 }),
+                  h(SaStat, { label: t('saAccepted'), value: flow.accepted || 0 }),
+                  h(SaStat, { label: t('saDropped'), value: flow.dropped || 0 })),
+                h('div', { className: 'sawb-meta' }, `${t('saPolicyVersion')} ${overview && overview.policyVersion || '—'}`)))),
+          h('section', { className: 'sawb-section' },
+            h('h3', null, t('saProblems'), overview && overview.problems && overview.problems.length ? badge(`${overview.problems.length}`, 'live') : badge('0', 'ok')),
+            !overview || !overview.problems || overview.problems.length === 0
+              ? h('div', { className: 'sawb-panel sawb-meta' }, t('saNoProblems'))
+              : h('div', null, overview.problems.map((problem, index) => h(SaProblem, { key: index, problem, t })))),
+          h('section', { className: 'sawb-section' }, h('h3', null, t('saHealth')), h('div', { className: 'sawb-panel' }, h(SaHealthList, { health, t }))))
+      } else if (tab === 'sources') {
+        body = h('section', { className: 'sawb-section' },
+          sourceCards.length === 0
+            ? h('div', { className: 'sawb-empty' }, t('saNoSources'))
+            : h('div', { className: 'sawb-sa-grid' }, sourceCards.map(source => {
+                const settings = source.settings || {}
+                const stats = source.stats || {}
+                const canRefresh = hasRefreshFields(settings.fields)
+                return h('div', { key: source.id, className: 'sawb-sa-card' },
+                  h('div', { className: 'sawb-sa-card-head' },
+                    h('h4', null, localized(source.title, source.id)),
+                    SaTag({ state: source.state, t }),
+                    h('span', { className: 'sawb-spacer' }),
+                    badge(source.id, 'muted')),
+                  h('div', { className: 'sawb-sa-stats' },
+                    h(SaStat, { label: t('saReceived'), value: stats.received || 0 }),
+                    h(SaStat, { label: t('saFiltered'), value: stats.filtered || 0 }),
+                    h(SaStat, { label: t('saLastAt'), value: stats.lastAt ? when(stats.lastAt) : '—' })),
+                  h(SaHealthList, { health: source.health, t }),
+                  source.problem ? h(Notice, { tone: 'error' }, localized(source.problem, String(source.problem))) : null,
+                  h('div', { className: 'sawb-actions' },
+                    canRefresh ? h('button', { type: 'button', className: 'sawb-btn sawb-btn-sm', onClick: () => act('POST', `sources/${source.id}/labels`, {}) }, t('saRefreshLabels')) : null,
+                    settings.policy && settings.policy.sync
+                      ? h('button', { type: 'button', className: 'sawb-btn sawb-btn-sm', disabled: !settings.policy.sync.ready, onClick: () => act('POST', `policy-sync/${source.id}`, {}) }, t('saPolicySync'))
+                      : null,
+                    (source.filtered || []).length > 0 ? h('span', { className: 'sawb-meta' }, `${t('saFiltered')} ${source.filtered.length}`) : null))
+              })))
+      } else if (tab === 'threads') {
+        const threads = (data.threads && data.threads.items) || []
+        body = h('section', { className: 'sawb-section' },
+          h('h3', null, t('saThreadsTab'), badge(`${threads.length}`, 'muted')),
+          threads.length === 0
+            ? h('div', { className: 'sawb-empty' }, t('saNoThreads'))
+            : h('div', { className: 'sawb-sa-grid' }, threads.map(thread => {
+                const source = sourceCards.find(item => item.id === thread.source)
+                return h('div', { key: thread.key, className: 'sawb-sa-card' },
+                  h('div', { className: 'sawb-sa-card-head' },
+                    h('h4', null, thread.title || thread.key),
+                    badge(thread.stage || '—', 'muted'),
+                    h('span', { className: 'sawb-spacer' }),
+                    h('button', { type: 'button', className: 'sawb-btn sawb-btn-sm', onClick: () => act('POST', `threads/${encodeURIComponent(thread.key)}/unsubscribe`, {}) }, t('saUnsubscribe'))),
+                  h('div', { className: 'sawb-meta' }, `${localized(source && source.title, thread.source)} · ${when(thread.lastAt)}`),
+                  thread.latest && thread.latest.preview ? h('p', { className: 'sawb-sa-preview' }, thread.latest.preview) : null,
+                  (thread.tickets || []).length > 0
+                    ? h('div', null,
+                        h('div', { className: 'sawb-meta' }, t('saThreadTickets')),
+                        thread.tickets.map(ticket => h('div', { key: ticket.id, className: 'sawb-meta' }, `${ticket.title || ticket.id} · ${ticket.state || ''}`)))
+                    : null,
+                  thread.pending ? h('div', { className: 'sawb-meta' }, t('saPendingCount', { n: thread.pending })) : null,
+                  thread.url ? h('div', { className: 'sawb-meta' }, h('a', { href: thread.url, target: '_blank', rel: 'noreferrer' }, thread.url)) : null)
+              })))
+      } else if (tab === 'decisions') {
+        const decisions = (data.decisions && data.decisions.items) || []
+        const decisionLabel = kind => ({ accept: t('saDecisionAccept'), ignore: t('saDecisionIgnore'), unavailable: t('saDecisionUnavailable') }[kind] || kind)
+        body = h('section', { className: 'sawb-section' },
+          h('h3', null, t('saDecisionsTab'), badge(`${decisions.length}`, 'muted')),
+          decisions.length === 0
+            ? h('div', { className: 'sawb-empty' }, t('saNoDecisions'))
+            : h('div', { className: 'sawb-sa-grid' }, decisions.map(decision => {
+                const reason = (decision.reason || []).map(item => {
+                  const detail = item.values && item.values.text
+                  return detail ? `${item.code}：${detail}` : item.code
+                }).join('；')
+                return h('div', { key: decision.id, className: 'sawb-sa-card' },
+                  h('div', { className: 'sawb-sa-card-head' },
+                    h('h4', null, decision.ticketTitle || decision.threadTitle || decision.preview || decision.id),
+                    badge(decisionLabel(decision.kind), decision.kind === 'accept' ? 'ok' : decision.kind === 'unavailable' ? 'error' : 'muted'),
+                    h('span', { className: 'sawb-spacer' }),
+                    decision.kind === 'unavailable'
+                      ? h('button', { type: 'button', className: 'sawb-btn sawb-btn-sm', onClick: () => act('POST', `decisions/${encodeURIComponent(decision.id)}/dismiss`, {}) }, t('saDismiss'))
+                      : null),
+                  h('div', { className: 'sawb-meta' }, when(decision.at)),
+                  decision.preview ? h('p', { className: 'sawb-sa-preview' }, decision.preview) : null,
+                  reason ? h('div', { className: 'sawb-meta' }, `${t('saReason')}：${reason}`) : null,
+                  decision.ticketId ? h('div', { className: 'sawb-meta sawb-mono' }, decision.ticketId) : null)
+              })))
+      } else if (tab === 'settings') {
+        body = h(React.Fragment, null,
+          h('section', { className: 'sawb-section' },
+            h('div', { className: 'sawb-sa-grid' },
+              (() => {
+                const blocks = data.settings && data.settings.blocks || {}
+                return h(React.Fragment, null,
+                  blocks.policy ? h(SaPolicyEditor, { block: blocks.policy, sources: settingsSources, t,
+                    onSave: (value, revision) => call('PUT', 'settings/policy', { value, revision }) }) : null,
+                  ['eval', 'executor'].map(name => {
+                    const block = blocks[name]
+                    if (!block) return null
+                    return h(SaSettingsForm, { key: name, title: name, value: block.value, revision: block.revision, fields: inferFields(block.value), t,
+                      onSave: (value, revision) => call('PUT', `settings/${name}`, { value, revision }) })
+                  }))
+              })())),
+          h('section', { className: 'sawb-section' },
+            h('h3', null, t('saSourcesTab')),
+            h('div', { className: 'sawb-sa-grid' }, settingsSources.map(source => h(SaSettingsForm, {
+              key: source.id, title: localized(source.title, source.id), value: source.value, revision: source.revision,
+              fields: source.fields || [], facts: source.facts || {}, restarts: source.restarts || [], problem: source.problem,
+              source: true, t, onSave: (value, revision) => call('PUT', `settings/source:${source.id}`, { value, revision }),
+            })))),
+          h(RetentionSection, { t }))
+      } else {
+        body = h(SaPromptsEditor, { prompts: data.prompts, t, onSave: (config, baseRevision) => call('PUT', 'prompts', { config, baseRevision }) })
+      }
       return h(React.Fragment, null,
         h('div', { className: 'sawb-head' },
           h('h2', { className: 'sawb-title' }, t('saTitle')),
           h('span', { className: 'sawb-meta' }, t('saHint')),
           h('span', { className: 'sawb-spacer' }),
           h(Tabs, { section, t, onSection }),
+          h('button', { type: 'button', className: 'sawb-btn', onClick: () => call('POST', 'setup/check', {}) }, t('saSetupCheck')),
+          h('button', { type: 'button', className: 'sawb-btn', onClick: () => call('POST', 'executor/pause', { paused: !paused }) }, paused ? t('saResume') : t('saPause')),
+          actionNotice ? h('span', { className: 'sawb-meta' }, actionNotice) : null,
           h('button', { type: 'button', className: 'sawb-btn', onClick: () => load() }, t('refresh'))),
         h('div', { className: 'sawb-body' },
           state.phase === 'error'
@@ -967,27 +1789,8 @@ window.__ModuleLoader__.load({
             : !data
               ? h('div', { className: 'sawb-empty' }, t('loadingData'))
               : h(React.Fragment, null,
-                  h('div', { className: 'sawb-actions' },
-                    h('button', { type: 'button', className: 'sawb-btn', onClick: () => call('POST', data.status && data.status.paused ? 'executor/pause' : 'executor/pause', { paused: !(data.status && data.status.paused) }) }, data.status && data.status.paused ? t('saResume') : t('saPause')),
-                    h('button', { type: 'button', className: 'sawb-btn', onClick: () => call('POST', 'setup/check', {}) }, t('saSetupCheck'))),
-                  h('section', { className: 'sawb-section' }, h('h3', null, t('saState')),
-                    h('pre', { className: 'sawb-json' }, JSON.stringify(data.status, null, 2))),
-                  h('section', { className: 'sawb-section' }, h('h3', null, t('saSources')),
-                    h('pre', { className: 'sawb-json' }, JSON.stringify(data.sources, null, 2))),
-                  h('section', { className: 'sawb-section' }, h('h3', null, t('saSettings')),
-                    ['policy', 'eval', 'executor'].map(name => data.settings.blocks && data.settings.blocks[name]
-                      ? h(JsonEditor, { key: name, title: name, value: data.settings.blocks[name].value, revision: data.settings.blocks[name].revision, t,
-                          onSave: (value, revision) => call('PUT', `settings/${name}`, { value, revision }) })
-                      : null),
-                    (data.settings.sources || []).map(source => h(JsonEditor, { key: source.id, title: `source:${source.id}`, value: source.value,
-                      revision: source.revision, t, onSave: (value, revision) => call('PUT', `settings/source:${source.id}`, { value, revision }) }))),
-                  h('section', { className: 'sawb-section' }, h('h3', null, t('saPrompts')),
-                    data.prompts && data.prompts.current
-                      ? h(JsonEditor, { title: 'prompts', value: data.prompts.current.config, revision: data.prompts.current.revision, t,
-                          onSave: (config, revision) => call('PUT', 'prompts', { config, baseRevision: revision }) })
-                      : h('div', { className: 'sawb-meta' }, t('saRaw'))),
-                  h(RetentionSection, { t })))
-      )
+                  h('div', { className: 'sawb-subtabs' }, tabs.map(item => tabButton(item[0]))),
+                  body)))
     }
 
     /** 工单详情上的运行操作：retry / stop，均走 SA 管理 API。 */
@@ -1002,8 +1805,15 @@ window.__ModuleLoader__.load({
     }
 
     function RepoCard({ repo, t, onOpen }) {
+      const sourceLabel = repo.source === 'workspace' ? t('repoSourceWorkspace')
+        : repo.source === 'sa-work' ? t('repoSourceSaWork')
+        : repo.source === 'sa-delivery' ? t('repoSourceSaDelivery')
+        : t('repoSourceConfigured')
       return h('article', { className: 'sawb-repo-card' },
-        h('h3', null, repo.name, ' ', badge(repo.mode === 'git' ? t('modeGit') : t('modeWorktree'), 'muted')),
+        h('h3', null, repo.name, ' ', badge(sourceLabel, 'muted')),
+        h('div', { className: 'sawb-chips' },
+          badge(repo.mode === 'git' ? t('modeGit') : t('modeWorktree'), 'muted'),
+          badge(repo.git ? t('repoGit') : t('repoNoGit'), repo.git ? 'ok' : 'muted')),
         repo.description ? h('p', { className: 'sawb-meta' }, repo.description) : null,
         repo.ok === false
           ? h(Notice, { tone: 'error' }, t('repoUnavailable', { message: repo.error }))
@@ -1012,6 +1822,11 @@ window.__ModuleLoader__.load({
               h('dt', null, t('head')), h('dd', { className: 'sawb-mono', title: repo.subject || '' }, `${repo.head || '—'}${repo.subject ? ` · ${repo.subject}` : ''}`),
               h('dt', null, t('repoPath')), h('dd', { className: 'sawb-mono', title: repo.path }, repo.path),
               repo.dirty ? h(React.Fragment, null, h('dt', null, ' '), h('dd', null, badge(t('dirty', { n: repo.dirty }), 'live'))) : null),
+        repo.sessions && repo.sessions.length > 0
+          ? h('div', null,
+              h('div', { className: 'sawb-meta' }, t('repoSessionCount', { n: repo.sessions.length })),
+              h(SessionList, { sessions: repo.sessions, t }))
+          : null,
         repo.commits && repo.commits.length > 0
           ? h('div', null,
               h('div', { className: 'sawb-meta' }, t('commits')),

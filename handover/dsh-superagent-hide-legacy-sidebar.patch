@@ -1,0 +1,34 @@
+From: dsh-workbench handover
+Subject: 隐藏 dsh-superagent 旧侧边栏入口，统一走 workbench 的 SA 控制
+
+dsh-workbench 的「SA 控制」已经覆盖状态、问题、来源、设置与提示词。
+继续在左侧边栏保留第二个管理入口只会造成重复；本补丁移除 dsh-superagent
+的 sidebar.panellist 注册，但保留 main 槽位，旧深链仍可打开做排障。
+
+diff --git a/src/client/index.tsx b/src/client/index.tsx
+--- a/src/client/index.tsx
++++ b/src/client/index.tsx
+@@ -1,4 +1,4 @@
+-/** Browser plugin entry point registering the sidebar icon, main management panel, and Plugin Manager config view. */
++/** Browser plugin entry point registering the main management panel and Plugin Manager config view. */
+ import { useCallback, useEffect, useRef } from 'react'
+ import type { Context } from '@deepseek-ai/cordis'
+ import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
+@@ -46,9 +46,8 @@
+ }
+ 
+ export const inject = ['slots', 'locale', 'sessions', 'uiWorkspace']
+-/** Registers the panel, sidebar icon, and Plugin Manager config view; `configForms` is optional (without it, machine settings are read-only). */
++/** Registers the panel and Plugin Manager config view; `configForms` is optional (without it, machine settings are read-only). */
+ export function apply(ctx: ClientContext): void {
+   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-superagent: dictionaries')
+-  const t = ctx.locale.bind(NS)
+   ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: PANEL_ID, locale: NS, inject: () => ({}) },
+     (props: { t: T }) => <Mounted ctx={ctx} t={props.t} />))
+-  ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({ name: 'sidebar.panellist', id: PANEL_ID, order: 10, label: () => t('panel'), locale: NS }, HammerIcon))
++  // 日常管理统一走 dsh-workbench「SA 控制」；旧面板只保留 main 深链，避免侧边栏重复入口。
++  // 保留 HammerIcon 引用，避免 noUnusedLocals 在构建时把未使用的图标函数当错误。
++  void HammerIcon
+   ctx.slots.inject('plugins.row.config', () => ctx.slots.register({ name: 'plugins.row.config', key: `${ENTRY}#${ENTRY}`, locale: NS },
+     (props: PluginConfigViewProps & { t: T }) => <PluginConfig t={props.t} view={props.view} form={props.form} />))
+ }

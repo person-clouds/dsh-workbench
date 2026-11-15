@@ -20,7 +20,7 @@ Sidebar icon (id `dsh-workbench`, label “DSH 工作台”) → `main` slot:
 | Repos | SA delivery repo + DSH workspace paths + `<stateDir>/work/*` ticket subprojects; auto-detects git; directory tree, file content, recent commits, dirty count, session names |
 | Docs | Markdown index grouped by repo, expanded as a tree by file path |
 | Tickets | SA ticket list and details: reports, diffs, ticket records; retry/stop directly |
-| SA Control | Overview/problems/health, source status and label refresh, policy/executor/source forms, prompt team sections/skills/revision history; writes are proxied to `/orchestrator/api/*` |
+| SA Control | Overview/problems/health, source status and label refresh, thread subscriptions, decision records/dismissal, policy/executor/source forms, prompt team sections/skills/revision history; writes are proxied to `/orchestrator/api/*` |
 
 ## Data sources
 

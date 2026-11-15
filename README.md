@@ -18,17 +18,19 @@
 
 | 标签页 | 内容 |
 |---|---|
-| 工作区 | 读取 DSH `workspaceRegistry`：标题、路径、状态、会话；归档/pin 状态只读展示 |
-| 仓库 | 配置的仓库 + DSH 工作区路径；目录树、文件内容、最近提交、未提交改动数 |
-| 文档 | 按仓库分组的 Markdown 索引，打开即渲染 |
+| 工作区 | 读取 DSH `workspaceRegistry`：所有工作区 + 明确「未分组」桶，展示会话名/ID/归档/pin；归档/pin 状态只读展示 |
+| 仓库 | SA 交付仓库 + DSH 工作区路径 + `<stateDir>/work/*` 工单子项目，自动检测 git；目录树、文件内容、最近提交、未提交改动数、会话名 |
+| 文档 | 按仓库分组的 Markdown 索引，按文件路径层级树状展开 |
 | 工单 | SA 工单列表与详情：报告、diff、工单记录；可直接重试/停止 |
-| SA 控制 | SA 概览、设置、提示词、模型、来源与保留策略；写操作代理到 `/orchestrator/api/*` |
+| SA 控制 | 概览/问题/健康、来源状态与标签刷新、线程订阅/取消订阅、决策记录与忽略、策略/执行器/来源设置表单、提示词团队段/技能/修订历史；写操作代理到 `/orchestrator/api/*` |
 
 ## 数据来源
 
 | 数据 | 来源 | 说明 |
 |---|---|---|
-| 工作区、会话归属 | DSH `ctx.workspaceRegistry` | 与 DSH Web UI 同一份事实 |
+| 工作区、会话归属 | DSH `ctx.workspaceRegistry` | 与 DSH Web UI 同一份事实；未分组由 Host 端计算 |
+| 会话标题 | DSH `ctx.sessionQuery` | `readTitleSnapshots`；工作区/仓库列表直接带回标题 |
+| 仓库清单 | `config.repos` + SA 交付仓库 + DSH 工作区 + `<stateDir>/work/*` | 按真实路径去重，来源标记为 configured / sa-delivery / workspace / sa-work |
 | 工单、报告、SA 设置 | `~/.dsh/state/superagent/orchestrator.sqlite` | 只读打开，WAL 可读 |
 | 工单记录 | 交付仓库 `origin/main` 的 `docs/work/<id8>-*.md` | 只读 git 对象 |
 | 分支改动 | `git diff <baseRef>...agent/<执行名>` | 只读；后台 `git fetch` 只更新引用 |
@@ -75,7 +77,13 @@ dsh plugin --profile web add dsh-workbench
 ```
 
 `repos` 每项：`{ id, name, path, mode: git|worktree, ref, description, remote, exclude }`。
-DSH 工作区会自动出现在仓库列表中，不再读取 `superagent-console/repos.json`。
+除显式 `repos` 外，仓库列表自动包含：`repoDir` 指向的 SA 交付仓库、DSH
+`workspaceRegistry` 中的所有工作区、`<stateDir>/work/*` 下的 SA 工单子项目。
+同一真实路径只保留一次，不再读取 `superagent-console/repos.json`。
+
+> 侧边栏统一入口是 `dsh-workbench`。若旧 `dsh-superagent` 面板仍占一个侧栏图标，
+> 用 [`handover/dsh-superagent-hide-legacy-sidebar.patch`](handover/dsh-superagent-hide-legacy-sidebar.patch)
+> 去掉重复入口；旧面板 `main` 深链保留，排障仍可直达。
 
 ## 60 天保留与清理
 
@@ -108,7 +116,8 @@ task/dsh-workbench/
 ├── lib/gitdata.js        # git show / ls-tree / diff / fetch
 ├── lib/markdown.js       # Markdown 子集 → block / 行内片段；diff 切块
 ├── lib/repos.js          # 只读仓库：文档索引 / 目录树 / 文件内容
-├── lib/workspaces.js     # DSH workspaceRegistry 读取
+├── lib/workspaces.js     # DSH workspaceRegistry + 未分组 + 会话标题
+├── lib/sessions.js       # sessionQuery 会话目录与标题快照
 ├── lib/retention.js      # 60 天保留、安全检查与清理台账
 ├── lib/sa.js             # SA 管理 API 白名单代理
 ├── client.js             # 浏览器侧：侧栏图标 + 5 个标签页
@@ -122,12 +131,12 @@ task/dsh-workbench/
 └── handover/                  # 单 Host 切换脚本与补丁（switch-single-host.sh 等）
 ```
 
+`sa-state.sh` 是 SA 运行态的唯一读取实现：`cloudctl sa status` 与
+`task/health-watch/scripts/checks/50-superagent.sh` 都调它，避免两套口径。
+
 ## 已知限制
 
 - 分支改动只在分支已推送或本地仍存在时可读；执行目录已清理且分支已删时只剩报告与文档；
 - 单次 diff 截断 400KB，单文件超过 2MB 或为二进制时不内联；
 - 不做代码全文搜索；
 - 能看到工作台的人等于能看到工单、文档与代码（与 DSH 登录态一致）。
-`sa-state.sh` 是 SA 运行态的唯一读取实现：`cloudctl sa status` 与
-`task/health-watch/scripts/checks/50-superagent.sh` 都调它，避免两套口径。
-
