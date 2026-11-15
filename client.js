@@ -134,6 +134,9 @@ window.__ModuleLoader__.load({
       "sessionUntitled": "未命名会话",
       "noSessions": "没有会话。",
       "sessionUpdated": "更新于 {time}",
+      "sessionRange": "显示 {from}-{to} / 共 {total} 个会话",
+      "sessionShowAll": "查看全部",
+      "sessionCollapse": "收起",
       "docsTreeHint": "按文件目录层级浏览，可折叠展开。",
       "repoSourceConfigured": "DSH 配置",
       "repoSourceWorkspace": "工作区自动识别",
@@ -372,6 +375,9 @@ window.__ModuleLoader__.load({
       "sessionUntitled": "Untitled session",
       "noSessions": "No sessions.",
       "sessionUpdated": "Updated {time}",
+      "sessionRange": "Showing {from}-{to} of {total} sessions",
+      "sessionShowAll": "Show all",
+      "sessionCollapse": "Collapse",
       "docsTreeHint": "Browse by file hierarchy; folders can be collapsed.",
       "repoSourceConfigured": "DSH config",
       "repoSourceWorkspace": "Auto-detected workspace",
@@ -632,8 +638,13 @@ window.__ModuleLoader__.load({
 .sawb-textarea { width: 100%; box-sizing: border-box; margin-top: 8px; padding: 8px 10px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 8px; background: var(--dsw-alias-bg-base); color: var(--dsw-alias-label-primary); font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; resize: vertical; }
 .sawb-session-list { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
 .sawb-session { display: flex; align-items: center; gap: 8px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 7px; padding: 5px 8px; min-width: 0; background: var(--dsw-alias-bg-base); }
-.sawb-session-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
-.sawb-session-id { margin-left: auto; font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); font-size: 11px; color: var(--dsw-alias-label-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 42%; }
+.sawb-session-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.sawb-session-id { flex: 0 1 32%; margin-left: auto; font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); font-size: 11px; color: var(--dsw-alias-label-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 32%; }
+.sawb-session-more { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+.sawb-session-more .sawb-meta { margin-right: auto; }
+.sawb-session-page { min-width: 24px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 6px; padding: 1px 6px; background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 11px; cursor: pointer; }
+.sawb-session-page:hover { background: var(--dsw-alias-bg-layer-2); }
+.sawb-session-page[aria-pressed="true"] { color: var(--dsw-alias-label-primary); border-color: var(--dsw-alias-brand-primary); background: var(--dsw-alias-bg-layer-2); }
 .sawb-card.sawb-ungrouped { border-style: dashed; }
 .sawb-doc-tree { padding: 6px 0; }
 .sawb-doc-folder { display: flex; align-items: center; gap: 6px; width: 100%; border: 0; background: transparent; color: inherit; font: inherit; padding: 5px 16px; cursor: pointer; text-align: left; }
@@ -965,7 +976,7 @@ window.__ModuleLoader__.load({
         ))
     }
 
-    /** 会话列表：显示标题，id 作为 tooltip/尾注；无标题时按类型给出可读占位。 */
+    /** 会话列表：显示标题，id 作为尾注；无标题时按类型给出可读占位。 */
     function sessionName(session, t) {
       if (session.title) return session.title
       if (session.kind === 'orchestrator') return `${t('sessionOrchestrator')} · ${session.id.slice(0, 12)}`
@@ -973,14 +984,48 @@ window.__ModuleLoader__.load({
       return t('sessionUntitled')
     }
 
-    function SessionList({ sessions, t }) {
-      if (!sessions || sessions.length === 0) return h('div', { className: 'sawb-meta', style: { marginTop: 8 } }, t('noSessions'))
-      return h('div', { className: 'sawb-session-list' }, sessions.map(session =>
-        h('div', { key: session.id, className: 'sawb-session', title: `${session.id}\n${session.cwd || ''}`.trim() },
-          session.archived ? badge(t('sessionArchived'), 'muted') : null,
-          session.pinned ? badge(t('sessionPinned'), 'muted') : null,
-          h('span', { className: 'sawb-session-name' }, sessionName(session, t)),
-          h('span', { className: 'sawb-session-id' }, session.id))))
+    const SESSION_PAGE_SIZE = 10
+
+    /** 工作区会话默认折叠为最近 10 个；可翻页，也可一键展开全部。 */
+    function SessionList({ sessions, t, collapsible = false }) {
+      const [expanded, setExpanded] = React.useState(false)
+      const [page, setPage] = React.useState(1)
+      const source = sessions || []
+      const ordered = React.useMemo(() => collapsible
+        ? [...source].sort((left, right) => Number(right.createdAt || 0) - Number(left.createdAt || 0))
+        : source, [source, collapsible])
+      const total = ordered.length
+      const pageCount = Math.max(1, Math.ceil(total / SESSION_PAGE_SIZE))
+      React.useEffect(() => {
+        if (page > pageCount) setPage(1)
+      }, [page, pageCount])
+      if (total === 0) return h('div', { className: 'sawb-meta', style: { marginTop: 8 } }, t('noSessions'))
+      const start = expanded ? 0 : (page - 1) * SESSION_PAGE_SIZE
+      const visible = expanded ? ordered : ordered.slice(start, start + SESSION_PAGE_SIZE)
+      return h(React.Fragment, null,
+        h('div', { className: 'sawb-session-list' }, visible.map(session => {
+          const name = sessionName(session, t)
+          return h('div', { key: session.id, className: 'sawb-session', title: [name, session.id, session.cwd || ''].filter(Boolean).join('\n') },
+            session.archived ? badge(t('sessionArchived'), 'muted') : null,
+            session.pinned ? badge(t('sessionPinned'), 'muted') : null,
+            h('span', { className: 'sawb-session-name', title: name }, name),
+            h('span', { className: 'sawb-session-id' }, session.id))
+        })),
+        collapsible && total > SESSION_PAGE_SIZE
+          ? h('div', { className: 'sawb-session-more' },
+              h('span', { className: 'sawb-meta' }, expanded
+                ? t('workspaceSessionCount', { n: total })
+                : t('sessionRange', { from: start + 1, to: start + visible.length, total })),
+              h('button', {
+                type: 'button', className: 'sawb-btn sawb-btn-sm',
+                onClick: () => { setExpanded(value => !value); setPage(1) },
+              }, expanded ? t('sessionCollapse') : t('sessionShowAll')),
+              expanded ? null : Array.from({ length: pageCount }, (_, index) => h('button', {
+                key: index + 1, type: 'button', className: 'sawb-session-page',
+                'aria-pressed': String(page === index + 1),
+                onClick: () => setPage(index + 1),
+              }, String(index + 1))))
+          : null)
     }
 
     /** 把 flat docs 构造成目录树；只在前端派生，不改变 Host 返回结构。 */
@@ -1150,12 +1195,12 @@ window.__ModuleLoader__.load({
                       h('div', { className: 'sawb-chips' },
                         h('span', { className: 'sawb-chip' }, t('workspaceSessionCount', { n: workspace.sessions.length })),
                         workspace.git ? h('span', { className: 'sawb-chip' }, t('repoGit')) : null),
-                      h(SessionList, { sessions: workspace.sessions, t }))),
+                      h(SessionList, { sessions: workspace.sessions, t, collapsible: true }))),
                     h('article', { key: '__ungrouped', className: 'sawb-card sawb-ungrouped' },
                       h('h3', null, t('ungroupedTitle')),
                       h('p', { className: 'sawb-meta' }, t('ungroupedHint')),
                       h('div', { className: 'sawb-chips' }, h('span', { className: 'sawb-chip' }, t('ungroupedCount', { n: ungrouped.length }))),
-                      h(SessionList, { sessions: ungrouped, t }))))))
+                      h(SessionList, { sessions: ungrouped, t, collapsible: true }))))))
     }
 
     /** JSON 编辑器：用于 settings 块与 prompts，保存必须带 revision 防止覆盖并发修改。 */
@@ -1645,7 +1690,7 @@ window.__ModuleLoader__.load({
           h('section', { className: 'sawb-section' },
             h('div', { className: 'sawb-sa-grid' },
               h('div', { className: 'sawb-sa-card' },
-                h('div', { className: 'sawb-sa-card-head' }, h('h4', null, t('saState')), SaTag({ state: paused ? 'paused' : 'ready', t }), h('span', { className: 'sawb-spacer' }), badge(status && status.masterId || '—', 'muted')),
+                h('div', { className: 'sawb-sa-card-head' }, h('h4', null, t('saState')), SaTag({ state: paused ? 'paused' : 'ready', t })),
                 h('dl', { className: 'sawb-kv' },
                   h('dt', null, t('saMaster')), h('dd', { className: 'sawb-mono' }, status && status.masterId || '—'),
                   h('dt', null, t('saExecutorLabel')), h('dd', null, paused ? t('saPaused') : t('saRunning')),
