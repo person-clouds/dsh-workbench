@@ -72,10 +72,10 @@ git apply       /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-super
 git apply --check /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-superagent-feishu-health-race.patch
 git apply       /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-superagent-feishu-health-race.patch
 
-# 2026-11-15 追加：移除 dsh-superagent 旧侧边栏入口，避免与
-# dsh-workbench「SA 控制」重复。只隐藏 sidebar.panellist，保留 main 深链。
-# 「SA 控制」现已覆盖 overview/sources/threads/decisions/settings/prompts，
-# 以及工单页的 execution，旧面板的日常管理入口不再需要。
+# 2026-11-15 追加：移除 dsh-superagent 旧侧边栏入口，避免重复。
+# 只隐藏 sidebar.panellist，必须保留 main 面板；dsh-workbench「SA 控制」
+# 现在通过 ctx.layout.selectPanel("dsh-superagent") 打开这个原生 main 面板，
+# 所以它不再是“仍覆盖”的旧副本，而是唯一 SA 管理界面。
 git apply --check /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-superagent-hide-legacy-sidebar.patch
 git apply       /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-superagent-hide-legacy-sidebar.patch
 
@@ -307,7 +307,9 @@ timeout 8 curl -sS --noproxy '*' -b "$JAR" -N "$BASE/plugins/events" | head -c 1
 - 侧栏出现「DSH 工作台」，5 个标签页可切换；
 - [工作区] 能看到当前 DSH 工作区与会话；
 - [工单] 能读 SA 工单；
-- [SA 控制] 能读 state/settings/prompts，保存一个无副作用设置后能恢复；
+- [SA 控制] 点击「打开 Superagent 原生控制台」能切到 `dsh-superagent` main 面板；
+  在原生页面能读 state/settings/prompts，保存一个无副作用设置后能恢复；
+- [工单] 右上角筛选在「只看进行中 / 看全部」之间切换，无进行中工单时显示明确空态；
 - [保留策略] dry-run 返回候选与逐项检查；
 - `ss -ltnp | grep :3082` 无输出。
 

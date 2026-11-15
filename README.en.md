@@ -2,9 +2,9 @@
 
 # DSH Workbench (dsh-workbench)
 
-Put DSH workspaces, SA tickets and reports, delivery branch changes, Markdown documents and read-only code browsing into one sidebar panel. SA operations are invoked from the same panel through the SA management API, without opening another port or a second DSH Host.
+Put DSH workspaces, SA tickets and reports, delivery branch changes, Markdown documents and read-only code browsing into one sidebar panel. The SA Control tab opens the genuine `dsh-superagent` frontend page instead of maintaining a second, weaker form set — still without opening another port or a second DSH Host.
 
-> Position: the delivery view and SA management entry for DSH. There is exactly one writer per source of truth: the DSH Host writes `workspace.json` and sessions; SA writes `orchestrator.sqlite`. This plugin only reads the SA database and sends writes through the SA management API.
+> Position: the delivery view and SA management entry for DSH. There is exactly one writer per source of truth: the DSH Host writes `workspace.json` and sessions; SA writes `orchestrator.sqlite`. This plugin only reads the SA database. The original `dsh-superagent` panel is the single source of truth for SA management UI.
 
 ## Panel layout
 
@@ -19,8 +19,8 @@ Sidebar icon (id `dsh-workbench`, label “DSH 工作台”) → `main` slot:
 | Workspaces | Reads DSH `workspaceRegistry`: paged workspace cards plus an explicit “ungrouped” bucket; shows the latest 10 sessions with paging or expand-all; archive and pin are read-only |
 | Repos | SA delivery repo + DSH workspace paths + `<stateDir>/work/*` ticket subprojects; auto-detects git; paged repo cards, lazily loaded and paged directory tree, file content, recent commits, dirty count, session names |
 | Docs | Lists repos first, then loads that repo’s Markdown index on demand; folders are collapsed by default and expand level by level |
-| Tickets | SA ticket list and details: reports, diffs, ticket records; retry/stop directly |
-| SA Control | Overview/problems/health, source status and label refresh, thread subscriptions, decision records/dismissal, policy/executor/source forms, prompt team sections/skills/revision history; writes are proxied to `/orchestrator/api/*` |
+| Tickets | SA ticket list and details: reports, diffs, ticket records; retry/stop directly; the top-right toggle explicitly switches between “Active only” and “Show all” |
+| SA Control | Opens the genuine `dsh-superagent` main panel: Overview / Sources / Triggers / Eval / Execution / Settings & prompts. Workbench-only capabilities missing from the native page are listed in [`PLAN-sa-ui-migration.md`](PLAN-sa-ui-migration.md); not implemented in this round |
 
 ## Data sources
 
@@ -33,7 +33,7 @@ Sidebar icon (id `dsh-workbench`, label “DSH 工作台”) → `main` slot:
 | Ticket records | `docs/work/<id8>-*.md` in the delivery repo's `origin/main` | Read-only git objects |
 | Branch changes | `git diff <baseRef>...agent/<executor>` | Read-only; background `git fetch` updates refs only |
 | Docs / code | `config.repos` + DSH workspace paths | `git` or `worktree` mode |
-| SA management writes | `/dsh-workbench/api/sa` → `/orchestrator/api/*` | Same origin, DSH login state and `x-orchestrator-request: 1` |
+| SA management writes | Native `dsh-superagent` panel → `/orchestrator/api/*` | Same origin as the workbench; the old `lib/sa.js` proxy is only a fallback when the layout service is unavailable |
 
 ## Install
 
@@ -77,7 +77,7 @@ Edit under DSH Settings → Plugins → DSH Workbench, or write it into the prof
 Each `repos` item: `{ id, name, path, mode: git|worktree, ref, description, remote, exclude }`.
 Besides explicit `repos`, the repo list automatically includes the SA delivery repo pointed to by `repoDir`, all DSH `workspaceRegistry` workspaces, and SA ticket subprojects under `<stateDir>/work/*`. The same real path appears only once; `superagent-console/repos.json` is no longer read.
 
-> The unified sidebar entry is `dsh-workbench`. If the old `dsh-superagent` panel still occupies a sidebar icon, use [`handover/dsh-superagent-hide-legacy-sidebar.patch`](handover/dsh-superagent-hide-legacy-sidebar.patch) to remove the duplicate entry; the old panel's `main` deep link remains for troubleshooting.
+> The unified sidebar entry is `dsh-workbench`. If the old `dsh-superagent` panel still occupies a sidebar icon, use [`handover/dsh-superagent-hide-legacy-sidebar.patch`](handover/dsh-superagent-hide-legacy-sidebar.patch) to remove the duplicate entry; its `main` panel remains registered, and SA Control reuses it through `ctx.layout.selectPanel("dsh-superagent")`. See [`PLAN-sa-ui-migration.md`](PLAN-sa-ui-migration.md).
 
 ## 60-day retention and cleanup
 
@@ -110,7 +110,8 @@ task/dsh-workbench/
 ├── lib/sessions.js       # sessionQuery session catalog and title snapshots
 ├── lib/retention.js      # 60-day retention, safety checks and cleanup ledger
 ├── lib/sa.js             # SA management API allowlist proxy
-├── client.js             # browser side: sidebar icon + 5 tabs
+├── client.js             # browser side: sidebar icon + 5 tabs; SA Control opens native panel
+├── PLAN-sa-ui-migration.md # native SA compatibility and pending-migration backlog
 ├── locale/zh.json        # Chinese copy
 ├── locale/en.json
 ├── market/person-clouds__dsh-workbench.yml

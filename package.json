@@ -1,8 +1,8 @@
 {
   "name": "dsh-workbench",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
-  "description": "DSH 统一工作台：工作区、仓库、文档、交付物，以及 SA 的配置与运行管理。",
+  "description": "DSH 统一工作台：工作区、仓库、文档、交付物，以及 Superagent 原生管理面板入口。",
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
@@ -24,6 +24,7 @@
     "locale/zh.json",
     "locale/en.json",
     "icon.svg",
+    "PLAN-sa-ui-migration.md",
     "README.md",
     "README.en.md"
   ],

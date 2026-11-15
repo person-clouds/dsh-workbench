@@ -3,10 +3,10 @@
 # DSH 工作台（dsh-workbench）
 
 把 DSH 工作区、SA 工单与报告、交付分支改动、Markdown 文档和只读代码浏览放进同一个侧栏面板；
-需要操作 SA 时，在面板内直接调用 SA 管理 API，不再新开端口或第二个 DSH Host。
+需要操作 SA 时，从「SA 控制」直接切到 `dsh-superagent` 自带的完整前端页面，不再维护第二套较弱表单，也不新开端口或第二个 DSH Host。
 
 > 定位：DSH 的交付视图与 SA 管理入口。状态事实只有一个写者：DSH Host 写 `workspace.json` 与 session，
-> SA 写 `orchestrator.sqlite`；本插件只读 SA 数据库，写操作一律经 SA 管理 API。
+> SA 写 `orchestrator.sqlite`；本插件只读 SA 数据库。SA 管理界面以原生 `dsh-superagent` 面板为唯一事实来源。
 
 ## 面板结构
 
@@ -21,8 +21,8 @@
 | 工作区 | 读取 DSH `workspaceRegistry`：工作区卡片分页展示 + 「未分组」桶；会话默认最近 10 个，可翻页或展开全部；归档/pin 状态只读展示 |
 | 仓库 | SA 交付仓库 + DSH 工作区路径 + `<stateDir>/work/*` 工单子项目，自动检测 git；仓库卡片分页、目录逐层加载并分页，展示文件内容、最近提交、未提交改动数、会话名 |
 | 文档 | 先列出仓库，选择后按需读取该仓库的 Markdown 索引；目录默认收起，点击逐层展开 |
-| 工单 | SA 工单列表与详情：报告、diff、工单记录；可直接重试/停止 |
-| SA 控制 | 概览/问题/健康、来源状态与标签刷新、线程订阅/取消订阅、决策记录与忽略、策略/执行器/来源设置表单、提示词团队段/技能/修订历史；写操作代理到 `/orchestrator/api/*` |
+| 工单 | SA 工单列表与详情：报告、diff、工单记录；可直接重试/停止；右上角可在「只看进行中 / 看全部」之间明确切换 |
+| SA 控制 | 一键切到 `dsh-superagent` 原生 main 面板：概览 / 来源 / 触发 / 评估 / 执行 / 设置与提示词。工作台独有但原生暂缺的能力只登记在 [`PLAN-sa-ui-migration.md`](PLAN-sa-ui-migration.md)，本轮不实现 |
 
 ## 数据来源
 
@@ -35,7 +35,7 @@
 | 工单记录 | 交付仓库 `origin/main` 的 `docs/work/<id8>-*.md` | 只读 git 对象 |
 | 分支改动 | `git diff <baseRef>...agent/<执行名>` | 只读；后台 `git fetch` 只更新引用 |
 | 文档 / 代码 | `config.repos` + DSH 工作区路径 | `git` 或 `worktree` 模式 |
-| SA 管理写操作 | `/dsh-workbench/api/sa` → `/orchestrator/api/*` | 同源、带 DSH 登录态与 `x-orchestrator-request: 1` |
+| SA 管理写操作 | `dsh-superagent` 原生面板 → `/orchestrator/api/*` | 原生页面与工作台同源；工作台旧 `lib/sa.js` 代理仅作布局接口不可用时的降级回退 |
 
 ## 安装
 
@@ -83,7 +83,8 @@ dsh plugin --profile web add dsh-workbench
 
 > 侧边栏统一入口是 `dsh-workbench`。若旧 `dsh-superagent` 面板仍占一个侧栏图标，
 > 用 [`handover/dsh-superagent-hide-legacy-sidebar.patch`](handover/dsh-superagent-hide-legacy-sidebar.patch)
-> 去掉重复入口；旧面板 `main` 深链保留，排障仍可直达。
+> 去掉重复入口；旧面板 `main` 深链保留，「SA 控制」正是通过 `ctx.layout.selectPanel("dsh-superagent")`
+> 复用它。迁移清单见 [`PLAN-sa-ui-migration.md`](PLAN-sa-ui-migration.md)。
 
 ## 60 天保留与清理
 
@@ -120,7 +121,8 @@ task/dsh-workbench/
 ├── lib/sessions.js       # sessionQuery 会话目录与标题快照
 ├── lib/retention.js      # 60 天保留、安全检查与清理台账
 ├── lib/sa.js             # SA 管理 API 白名单代理
-├── client.js             # 浏览器侧：侧栏图标 + 5 个标签页
+├── client.js             # 浏览器侧：侧栏图标 + 5 个标签页；SA 控制切原生面板
+├── PLAN-sa-ui-migration.md # 原生 SA 页面兼容与「待做待迁」清单
 ├── locale/zh.json        # 中文文案
 ├── locale/en.json
 ├── market/person-clouds__dsh-workbench.yml

@@ -114,6 +114,15 @@ window.__ModuleLoader__.load({
       "syncFail": "上次同步失败：{message}",
       "saTitle": "SA 控制",
       "saHint": "只通过 SA management API 读写；不直连 SQLite。",
+      "saNativeTitle": "Superagent 原生控制台",
+      "saNativeHint": "完整管理界面直接复用 dsh-superagent 自带的前端页面，不再在本插件里维护第二套功能较弱的表单。",
+      "saOpenNative": "打开 Superagent 原生控制台",
+      "saNativeUnavailable": "当前 DSH 布局没有暴露 selectPanel，无法切换到 Superagent 原生面板。",
+      "saPendingMigration": "工作台独有功能（待做待迁，本轮不实现）",
+      "saPendingIntro": "以下操作 Superagent 原生页面目前不提供，继续保留在工作台后续计划中；按你的要求先列清单，不迁、不补。",
+      "saPendingRetention": "60 天保留清理与 dry-run / 自动清理入口（工作区与仓库清理，非 SA 管理 API 能力）。",
+      "saPendingRawJson": "SA 配置的原始 JSON 直接编辑与宽松高级字段编辑；原生页面使用结构化表单。",
+      "saPendingTickets": "工作台工单页的跨仓库快照、diff、报告与执行目录检查；原生页面侧重 SA 运行管理。",
       "saState": "运行状态",
       "saSources": "来源",
       "saSettings": "配置",
@@ -361,6 +370,15 @@ window.__ModuleLoader__.load({
       "syncFail": "Last sync failed: {message}",
       "saTitle": "SA control",
       "saHint": "Reads and writes only through the SA management API; never SQLite directly.",
+      "saNativeTitle": "Superagent native console",
+      "saNativeHint": "The full management UI is the original dsh-superagent frontend page, so this plugin no longer maintains a second, weaker form set.",
+      "saOpenNative": "Open Superagent native console",
+      "saNativeUnavailable": "The current DSH layout does not expose selectPanel, so the Superagent panel cannot be opened.",
+      "saPendingMigration": "Workbench-only features (planned, not implemented)",
+      "saPendingIntro": "The original Superagent page does not provide these operations yet. They stay on the workbench backlog only; per request this round lists them without implementing or migrating them.",
+      "saPendingRetention": "60-day retention cleanup with dry-run and automatic cleanup entry points (workspace/repository maintenance, not an SA management API feature).",
+      "saPendingRawJson": "Raw JSON editing and permissive advanced-field editing for SA configuration; the native page uses structured forms.",
+      "saPendingTickets": "Cross-repository ticket snapshots, diffs, reports, and execution-directory checks in the workbench Tickets tab; the native page focuses on SA runtime management.",
       "saState": "Runtime state",
       "saSources": "Sources",
       "saSettings": "Settings",
@@ -527,6 +545,12 @@ window.__ModuleLoader__.load({
 .sawb-btn { border: 1px solid var(--dsw-alias-border-l2); background: transparent; color: var(--dsw-alias-label-primary); border-radius: 6px; padding: 3px 10px; font: inherit; font-size: 12px; cursor: pointer; }
 .sawb-btn:hover { background: var(--dsw-alias-bg-layer-2); }
 .sawb-btn[aria-pressed="true"] { background: var(--dsw-alias-bg-layer-2); border-color: var(--dsw-alias-brand-primary); }
+.sawb-btn.sawb-btn-primary { background: var(--dsw-alias-brand-primary); border-color: var(--dsw-alias-brand-primary); color: var(--dsw-alias-label-primary-inverted); padding: 6px 14px; font-size: 13px; }
+.sawb-btn.sawb-btn-primary:hover { filter: brightness(.96); }
+.sawb-sa-native-card { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 20px 22px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 12px; background: var(--dsw-alias-bg-layer-1); margin-bottom: 24px; }
+.sawb-sa-native-card h3 { margin: 0; font-size: 16px; font-weight: 600; }
+.sawb-sa-native-card p { margin: 0; max-width: 760px; }
+.sawb-pending-list { margin: 0; padding-left: 20px; color: var(--dsw-alias-label-secondary); display: flex; flex-direction: column; gap: 6px; }
 .sawb-btn:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary); outline-offset: 1px; }
 .sawb-btn.sawb-btn-sm { padding: 2px 8px; }
 .sawb-tabs { display: inline-flex; gap: 2px; padding: 2px; border-radius: 8px; background: var(--dsw-alias-bg-layer-2); }
@@ -929,12 +953,12 @@ window.__ModuleLoader__.load({
     }
 
     function ListView({ data, t, onOpen, section, onSection }) {
-      const [showAll, setShowAll] = React.useState(false)
+      // 筛选状态必须独立于当前有没有 live 工单：否则 live 为空时两个按钮
+      // 实际都展示全部，用户会看到文案变了但列表不变，误以为按钮失效。
+      const [filter, setFilter] = React.useState('live')
       const all = (data && data.tickets) || []
       const live = all.filter(ticket => ticket.live)
-      // 默认先看进行中；没有进行中就直接给全部，免得用户对着空列表。
-      const showLive = !showAll && live.length > 0
-      const shown = showLive ? live : all
+      const shown = filter === 'live' ? live : all
       const notices = []
       if (data && data.db && !data.db.ok) notices.push(h(Notice, { key: 'db', tone: 'error' }, t('dbMissing', { message: data.db.error })))
       if (data && data.repo && !data.repo.ok) notices.push(h(Notice, { key: 'repo' }, t('repoMissing', { dir: data.repo.dir })))
@@ -952,9 +976,10 @@ window.__ModuleLoader__.load({
           h('button', {
             type: 'button',
             className: 'sawb-btn',
-            'aria-pressed': String(showAll),
-            onClick: () => setShowAll(value => !value),
-          }, showAll ? t('filterLive') : t('filterAll')),
+            'aria-pressed': String(filter === 'all'),
+            title: filter === 'live' ? t('filterAll') : t('filterLive'),
+            onClick: () => setFilter(value => value === 'live' ? 'all' : 'live'),
+          }, filter === 'live' ? t('filterAll') : t('filterLive')),
         ),
         h('div', { className: 'sawb-body' },
           notices,
@@ -1747,8 +1772,47 @@ window.__ModuleLoader__.load({
               `r${item.revision} · ${when(item.savedAt)} · ${item.source || ''} · ${(item.changed || []).join(', ')}`)))))
     }
 
-    /** SA 控制页：读 state/overview/sources/settings/prompts；写操作全部走同源代理。 */
-    function SaView({ t, section, onSection }) {
+    /**
+     * SA 控制入口：不再复制一套管理表单，而是切换到 dsh-superagent 自己注册的
+     * main 面板（前端页面完全相同）。layout.selectPanel 是 DSH 的跨插件面板切换
+     * 接口；旧面板的侧栏图标已隐藏，但 main 深链一直保留。
+     */
+    function SaView({ t, section, onSection, ctx }) {
+      const [notice, setNotice] = React.useState('')
+      const canOpen = Boolean(ctx && ctx.layout && typeof ctx.layout.selectPanel === 'function')
+      const openNative = () => {
+        try {
+          if (!canOpen) throw new Error(t('saNativeUnavailable'))
+          setNotice('')
+          ctx.layout.selectPanel('dsh-superagent')
+        } catch (error) {
+          setNotice(errorText(error))
+        }
+      }
+      if (!canOpen) return h(LegacySaView, { t, section, onSection })
+      return h(React.Fragment, null,
+        h('div', { className: 'sawb-head' },
+          h('h2', { className: 'sawb-title' }, t('saTitle')),
+          h('span', { className: 'sawb-meta' }, t('saNativeHint')),
+          h('span', { className: 'sawb-spacer' }),
+          h(Tabs, { section, t, onSection })),
+        h('div', { className: 'sawb-body' },
+          h('section', { className: 'sawb-sa-native-card' },
+            h('h3', null, t('saNativeTitle')),
+            h('p', { className: 'sawb-meta' }, t('saNativeHint')),
+            h('button', { type: 'button', className: 'sawb-btn sawb-btn-primary', onClick: openNative }, t('saOpenNative')),
+            notice ? h(Notice, { tone: 'error' }, notice) : null),
+          h('section', { className: 'sawb-section' },
+            h('h3', null, t('saPendingMigration')),
+            h('p', { className: 'sawb-meta' }, t('saPendingIntro')),
+            h('ul', { className: 'sawb-pending-list' },
+              h('li', null, t('saPendingRetention')),
+              h('li', null, t('saPendingRawJson')),
+              h('li', null, t('saPendingTickets'))))))
+    }
+
+    /** 旧版 SA 控制页（仅当 DSH 布局接口不可用时回退）：读 state/overview/sources/settings/prompts；写操作全部走同源代理。 */
+    function LegacySaView({ t, section, onSection }) {
       const [state, setState] = React.useState({ phase: 'loading', data: undefined, error: '' })
       const [tab, setTab] = React.useState('overview')
       const [actionNotice, setActionNotice] = React.useState('')
@@ -2092,7 +2156,7 @@ window.__ModuleLoader__.load({
     }
 
     /** 列表：静默定时刷新；详情：打开时读一次快照，避免长报告反复传输。 */
-    function Workbench({ t }) {
+    function Workbench({ t, ctx }) {
       const [section, setSection] = React.useState('workspaces')
       const [list, setList] = React.useState({ phase: 'loading', data: undefined, error: '' })
       const [detail, setDetail] = React.useState({ id: '', ticket: undefined, phase: 'idle', error: '' })
@@ -2124,7 +2188,7 @@ window.__ModuleLoader__.load({
       if (section === 'workspaces') return h(Root, null, h(WorkspacesView, { t, section, onSection: setSection }))
       if (section === 'repos') return h(Root, null, h(CodeView, { t, section, onSection: setSection }))
       if (section === 'docs') return h(Root, null, h(DocsView, { t, section, onSection: setSection }))
-      if (section === 'sa') return h(Root, null, h(SaView, { t, section, onSection: setSection }))
+      if (section === 'sa') return h(Root, null, h(SaView, { t, section, onSection: setSection, ctx }))
 
       if (detail.id) {
         if (detail.ticket) return h(Root, null, h(DetailView, { ticket: detail.ticket, t, onBack: back }))
@@ -2158,14 +2222,14 @@ window.__ModuleLoader__.load({
         h('circle', { cx: 17, cy: 8, r: 1.6, fill: 'currentColor', stroke: 'none' }))
 
     return {
-      inject: ['slots', 'locale'],
+      inject: ['slots', 'locale', 'layout'],
       apply(ctx) {
         // DSH 内置语言 id 是 zh / en；再保留 zh-CN 以兼容浏览器区域标签。
         ctx.effect(() => ctx.locale.register(NS, { zh, 'zh-CN': zh, en }), 'dsh-workbench: dictionaries')
         const t = ctx.locale.bind(NS)
         ctx.slots.inject('main', () => ctx.slots.register(
           { name: 'main', key: PANEL_ID, locale: NS },
-          (props) => h(Workbench, { t: props.t || t }),
+          (props) => h(Workbench, { t: props.t || t, ctx }),
         ))
         ctx.slots.inject('sidebar.panellist', () => ctx.slots.register(
           { name: 'sidebar.panellist', id: PANEL_ID, order: 20, label: () => t('panel'), locale: NS },

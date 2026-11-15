@@ -1,10 +1,30 @@
 # STATUS — DSH 工作台
 
-- 更新时间：2026-11-15（单 Host 切换成功）
+- 更新时间：2026-11-15（工单筛选修复 + SA 原生前端兼容）
 - 一句话：DSH 单 Host 下的统一工作台。面板覆盖工作区、仓库、文档、工单和 SA 控制；
-  SA 管理写操作统一走 `/orchestrator/api/*` 代理，60 天保留与清理有 dry-run 和逐项安全检查。
-- 位置：`task/dsh-workbench/`；包名 `dsh-workbench@0.2.0`。
-- 计划：[`PLAN-dsh-workbench.md`](PLAN-dsh-workbench.md)。
+  SA 控制直接切到 `dsh-superagent` 原生 main 面板，60 天保留与清理仍有 dry-run 和逐项安全检查。
+- 位置：`task/dsh-workbench/`；包名 `dsh-workbench@0.2.1`。
+- 计划：[`PLAN-dsh-workbench.md`](PLAN-dsh-workbench.md)、[`PLAN-sa-ui-migration.md`](PLAN-sa-ui-migration.md)。
+
+## 2026-11-15 最新：工单筛选修复 + SA 控制改走原生前端
+
+- [x] 工单右上角筛选改为显式 `live | all` 两态：不再用 `showAll` 推导展示集合。
+      真实库 11 张工单全部已结束（`live:false`），旧实现会把「只看进行中」静默回退成全部，
+      导致按钮文案/`aria-pressed` 与列表不一致；现在空态会明确提示没有进行中工单，
+      点击「看全部」立即展示全部。
+- [x] 「SA 控制」不再渲染工作台手写管理表单：新增原生入口，通过
+      `ctx.layout.selectPanel('dsh-superagent')` 打开 `dsh-superagent` 已注册的 `main` 面板。
+      复用完整原生前端（概览/来源/触发/评估/执行/设置/提示词），不复制 bundle、不维护第二套 CSS。
+- [x] 浏览器端插件 `inject` 增加 `layout`；仅在布局接口不可用时回退旧 `LegacySaView`。
+- [x] 新增 [`PLAN-sa-ui-migration.md`](PLAN-sa-ui-migration.md)：列出保留清理、原始 JSON、
+      工单快照/diff/报告等工作台独有能力，明确「待做待迁、本轮不实现」。
+- [x] 校验：`node --check index.js/client.js`、`vm.Script` 解析 + client 双加载 + factory 执行、
+      `node --test handover/test-workbench-repos.mjs`、`npm pack --dry-run`（v0.2.1，18 文件）通过。
+- [x] 浏览器验收（Playwright + 本机 3080，使用当前已加载插件）：
+      工单页初始「只看进行中」显示「当前没有进行中的工单」，点「看全部」后列出 11 条、
+      按钮切为「只看进行中」且 `aria-pressed=true`；
+      SA 控制页点「打开 Superagent 原生控制台」后成功切到 `dsh-superagent` 的
+      概览/来源/触发/评估/执行/设置页面，控制台无 pageerror。
 
 ## 已完成（代码侧）
 
