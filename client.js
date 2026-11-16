@@ -163,6 +163,8 @@ window.__ModuleLoader__.load({
       "repoGit": "git 仓库",
       "repoNoGit": "非 git 目录",
       "repoSessionCount": "{n} 个会话",
+      "repoSessionsTitle": "仓库会话",
+      "repoSessionsHint": "按会话 cwd 匹配当前仓库（含子目录）；默认只显示未归档会话。",
       "saOverview": "概览",
       "saSourcesTab": "来源",
       "saSettingsTab": "配置",
@@ -422,6 +424,8 @@ window.__ModuleLoader__.load({
       "repoGit": "git repository",
       "repoNoGit": "non-git directory",
       "repoSessionCount": "{n} sessions",
+      "repoSessionsTitle": "Repository sessions",
+      "repoSessionsHint": "Matched by session cwd under this repository (including subdirectories); unarchived only by default.",
       "saOverview": "Overview",
       "saSourcesTab": "Sources",
       "saSettingsTab": "Settings",
@@ -1099,7 +1103,7 @@ window.__ModuleLoader__.load({
     const SESSION_PAGE_SIZE = 10
 
     /** 会话列表只接收当前页预览；更多页从服务端按工作区/归档筛选加载。 */
-    function SessionList({ sessions, t, collapsible = false, total, workspaceId, archived = 'active' }) {
+    function SessionList({ sessions, t, collapsible = false, total, workspaceId, repoId, archived = 'active' }) {
       const source = sessions || []
       const [items, setItems] = React.useState(source)
       const [page, setPage] = React.useState(1)
@@ -1115,13 +1119,16 @@ window.__ModuleLoader__.load({
       if (totalCount === 0) return h('div', { className: 'sawb-meta', style: { marginTop: 8 } }, t('noSessions'))
       const changePage = next => {
         setPage(next)
-        if (!workspaceId || next === 1) {
+        if ((!workspaceId && !repoId) || next === 1) {
           setItems(source)
           return
         }
         setLoading(true)
         setError('')
-        loadApi({ view: 'sessions', workspace: workspaceId, offset: (next - 1) * SESSION_PAGE_SIZE, limit: SESSION_PAGE_SIZE, archived, sort: 'createdAt', dir: 'desc' })
+        const params = repoId
+          ? { view: 'repoSessions', repo: repoId, offset: (next - 1) * SESSION_PAGE_SIZE, limit: SESSION_PAGE_SIZE, archived, sort: 'createdAt', dir: 'desc' }
+          : { view: 'sessions', workspace: workspaceId, offset: (next - 1) * SESSION_PAGE_SIZE, limit: SESSION_PAGE_SIZE, archived, sort: 'createdAt', dir: 'desc' }
+        loadApi(params)
           .then(data => {
             setItems(data.sessions || [])
             setTotalCount(Number(data.total) || 0)
@@ -2076,11 +2083,6 @@ window.__ModuleLoader__.load({
               h('dt', null, t('head')), h('dd', { className: 'sawb-mono', title: repo.subject || '' }, `${repo.head || '—'}${repo.subject ? ` · ${repo.subject}` : ''}`),
               h('dt', null, t('repoPath')), h('dd', { className: 'sawb-mono', title: repo.path }, repo.path),
               repo.dirty ? h(React.Fragment, null, h('dt', null, ' '), h('dd', null, badge(t('dirty', { n: repo.dirty }), 'live'))) : null),
-        repo.sessions && repo.sessions.length > 0
-          ? h('div', null,
-              h('div', { className: 'sawb-meta' }, t('repoSessionCount', { n: repo.sessions.length })),
-              h(SessionList, { sessions: repo.sessions, t }))
-          : null,
         repo.commits && repo.commits.length > 0
           ? h('div', null,
               h('div', { className: 'sawb-meta' }, t('commits')),
@@ -2097,8 +2099,24 @@ window.__ModuleLoader__.load({
       const [repoPage, setRepoPage] = React.useState(1)
       const [treePage, setTreePage] = React.useState(1)
       const [state, setState] = React.useState({ phase: 'loading', data: undefined, error: '' })
+      const [repoSessions, setRepoSessions] = React.useState({ phase: 'idle', data: undefined, error: '' })
 
       React.useEffect(() => { setTreePage(1) }, [route])
+      React.useEffect(() => {
+        if (route.kind !== 'tree' || route.path) {
+          setRepoSessions({ phase: 'idle', data: undefined, error: '' })
+          return undefined
+        }
+        const controller = new AbortController()
+        setRepoSessions({ phase: 'loading', data: undefined, error: '' })
+        loadApi({ view: 'repoSessions', repo: route.repo.id, offset: 0, limit: SESSION_PAGE_SIZE, archived: 'active', sort: 'createdAt', dir: 'desc' }, controller.signal)
+          .then(data => setRepoSessions({ phase: 'ready', data, error: '' }))
+          .catch(error => {
+            if (error && error.name === 'AbortError') return
+            setRepoSessions({ phase: 'error', data: undefined, error: errorText(error) })
+          })
+        return () => controller.abort()
+      }, [route])
       React.useEffect(() => {
         const controller = new AbortController()
         setState({ phase: 'loading', data: undefined, error: '' })
@@ -2149,6 +2167,19 @@ window.__ModuleLoader__.load({
             h('button', { type: 'button', className: 'sawb-btn', onClick: () => openTree(route.repo, '') }, t('repoPath')),
             h('span', { className: 'sawb-meta' }, t('dirCount', { n: dirs }) + ' · ' + t('fileCount', { n: entries.length - dirs }) + ` / ${totalEntries}`)),
           h(Breadcrumbs, { repo: route.repo, path: data.path || '', t, onRoot: () => openTree(route.repo, ''), onPath: path => openTree(route.repo, path) }),
+          !data.path ? h('section', { className: 'sawb-section' },
+            h('h3', null, t('repoSessionsTitle'), ' ', repoSessions.data ? badge(t('repoSessionCount', { n: repoSessions.data.total }), 'muted') : null),
+            h('p', { className: 'sawb-meta' }, t('repoSessionsHint')),
+            repoSessions.phase === 'error'
+              ? h(Notice, { tone: 'error' }, t('readFailed', { message: repoSessions.error }))
+              : repoSessions.phase === 'loading' && !repoSessions.data
+                ? h('div', { className: 'sawb-meta' }, t('loadingData'))
+                : repoSessions.data
+                  ? h(SessionList, {
+                      key: `repo:${route.repo.id}`, sessions: repoSessions.data.sessions || [], total: repoSessions.data.total,
+                      repoId: route.repo.id, archived: 'active', t, collapsible: true,
+                    })
+                  : null) : null,
           entries.length === 0
             ? h('div', { className: 'sawb-empty' }, t('emptyTree'))
             : h(React.Fragment, null,

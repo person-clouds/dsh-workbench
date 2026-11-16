@@ -1,12 +1,22 @@
 # STATUS — DSH 工作台
 
-- 更新时间：2026-11-16（仓库列表每页 4 条并按更新时间倒序）
+- 更新时间：2026-11-16（归档会话标题永久缓存与仓库会话分区）
 - 一句话：DSH 单 Host 下的统一工作台。面板覆盖工作区、仓库、文档、工单和 SA 控制；
   SA 控制直接切到 `dsh-superagent` 原生 main 面板，60 天保留与清理仍有 dry-run 和逐项安全检查。
 - 位置：`task/dsh-workbench/`；包名 `dsh-workbench@0.2.1`。
 - 计划：[`PLAN-dsh-workbench.md`](PLAN-dsh-workbench.md)、[`PLAN-sa-ui-migration.md`](PLAN-sa-ui-migration.md)。
 
-## 2026-11-16 最新：仓库列表按更新时间倒序
+## 2026-11-16 最新：归档会话标题缓存与仓库会话分区
+
+- [x] 新增 `lib/title-cache.js`：`<dshHome>/state/workbench/session-titles.json`，进程内 Map + mtime 校验，合并后临时文件 + rename 原子写，失败仅告警。
+- [x] `sessionCatalog()` 标题改为 DSH 投影缓存 → 永久标题缓存，不再批量 `readTitleSnapshots()`；`hydrateSessionTitles()` 只补传入的当前页，归档缓存命中直接跳过。
+- [x] 工作区卡片按切片后补标题；`view=sessions` 分页后补当前页，`sort=title` 才在排序前补全。
+- [x] 仓库列表不再携带 `sessions/sessionTotal`，也不在列表阶段调用 `sessionCatalog`；新增 `view=repoSessions&repo=&offset=&limit=&archived=`，按 cwd（含子目录）匹配并排除 subagent。
+- [x] 仓库卡片删除会话区块；仓库详情根目录增加“仓库会话”区，翻页走服务端，默认 10 条/页。
+- [x] 测试新增：当前页标题读取、永久缓存二次命中零日志、DSH 投影优先、仓库会话分页和列表无会话字段。
+- [x] 校验：`node --check index.js/client.js/lib/*.js`、`node --test handover/test-workbench-lists.mjs handover/test-workbench-repos.mjs` 通过；重启 `dsh-web` 实测待用户确认。
+
+## 2026-11-16 上一轮：仓库列表按更新时间倒序
 
 - [x] `view=repos` 默认每页 4 条，`updatedAt` 取仓库最新提交时间；非 git 目录回退到 mtime。
 - [x] 服务端先对全量仓库按 `updatedAt` 倒序稳定排序，再分页；前端仓库页同步传 `sort=updatedAt&dir=desc`，分页控件按每页 4 条计算。

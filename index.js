@@ -15,10 +15,11 @@ import { branchDiff, fileAt, findTicketDoc, headInfo, looksLikeRepo, syncRemote 
 import { archivedFilter, listParams, paginate, sortBy, timeValue } from './lib/list.js'
 import { firstHeading, markdownBlocks, splitPatch, withParts } from './lib/markdown.js'
 import { allowedSaRequest, proxySa } from './lib/sa.js'
-import { docsIndex, findRepo, loadRepos, repoBlob, repoTree, reposOverview } from './lib/repos.js'
+import { docsIndex, findRepo, loadRepos, repoBlob, repoSessionPage, repoTree, reposOverview } from './lib/repos.js'
 import { loadTickets } from './lib/tickets.js'
 import { retentionFile, retentionSnapshot, runCleanup } from './lib/retention.js'
 import { sessionsPage, workspaceRepos, workspacesOverview } from './lib/workspaces.js'
+import { createTitleCache } from './lib/title-cache.js'
 
 export const name = 'dsh-workbench'
 /** webServer 提供路由，connection 提供 Host / Origin 校验与浏览器鉴权。 */
@@ -53,6 +54,18 @@ export const Config = z.object({
 /** 一次快照请求的进程内缓存：key 由请求形状决定。 */
 let cache = { key: '', at: 0, value: undefined, pending: undefined }
 let syncState = { at: '', ok: undefined, message: '尚未同步' }
+/** 同一 Host 进程内复用标题缓存；文件路径变化（dshHome 不同）时另建实例。 */
+const titleCaches = new Map()
+
+function titleCacheOf(ctx, config) {
+  const key = config.titleFile || `${config.dshHome || DEFAULT_HOME}`
+  if (!titleCaches.has(key)) {
+    titleCaches.set(key, createTitleCache(config, {
+      warn: message => { if (ctx && ctx.logger && typeof ctx.logger.warn === 'function') ctx.logger.warn(message); else console.warn(message) },
+    }))
+  }
+  return titleCaches.get(key)
+}
 
 function dbPathOf(config) {
   const stateDir = config.stateDir || join(config.dshHome || DEFAULT_HOME, 'state', 'superagent')
@@ -149,6 +162,7 @@ async function buildView(ctx, config, params, DatabaseSync) {
       ...(await workspacesOverview(ctx, {
         ...page,
         archived: archivedFilter(params.get('archived'), 'active'),
+        cache: titleCacheOf(ctx, config),
         sessionLimit: Math.max(1, Math.min(Number(params.get('sessionLimit')) || 10, 20)),
       })),
     }
@@ -161,6 +175,7 @@ async function buildView(ctx, config, params, DatabaseSync) {
         ...page,
         workspace: params.get('workspace') || 'ungrouped',
         archived: archivedFilter(params.get('archived'), 'active'),
+        cache: titleCacheOf(ctx, config),
       })),
     }
   }
@@ -206,13 +221,26 @@ async function buildView(ctx, config, params, DatabaseSync) {
     const result = paginate(ordered, page)
     return {
       generatedAt: new Date().toISOString(),
-      repos: await reposOverview(result.items, ctx),
+      repos: result.items,
       total: result.total,
       offset: result.offset,
       limit: result.limit,
       hasMore: result.hasMore,
       sort: page.sort,
       dir: page.dir,
+    }
+  }
+  if (view === 'repoSessions') {
+    const repos = await loadRepos(config, workspaceRepos(ctx))
+    const repo = findRepo(repos, params.get('repo') || '')
+    if (!repo) return { error: `找不到仓库：${params.get('repo') || ''}` }
+    const page = listParams(params, { defaultLimit: 10, maxLimit: 50, defaultSort: 'createdAt', allowedSorts: ['createdAt', 'id', 'title', 'kind'], defaultDir: 'desc' })
+    return {
+      generatedAt: new Date().toISOString(),
+      ...(await repoSessionPage(ctx, repo, {
+        ...page,
+        archived: archivedFilter(params.get('archived'), 'active'),
+      }, titleCacheOf(ctx, config))),
     }
   }
   if (view === 'tree' || view === 'blob') {
@@ -343,7 +371,7 @@ function serveRoute(ctx, config) {
       const value = view
         ? await cachedView(ctx, config, url.searchParams, ctx.get('node:sqlite')?.DatabaseSync)
         : await cachedSnapshot(config, url.searchParams.get('ticket') || '', url.searchParams, ctx.get('node:sqlite')?.DatabaseSync)
-      const failed = value && value.error && !value.tickets && !value.ticket && !value.groups && !value.repos && !value.entries && !value.path && !value.workspaces && !value.sessions && !value.candidates
+      const failed = value && value.error && !value.tickets && !value.ticket && !value.groups && !value.repos && !value.entries && !value.path && !value.workspaces && !value.sessions && !value.candidates && !value.repo
       json(res, failed ? 400 : 200, value)
     } catch (error) {
       json(res, 500, { error: String(error && error.message ? error.message : error) })

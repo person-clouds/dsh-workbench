@@ -141,6 +141,8 @@
   "repoGit": "git 仓库",
   "repoNoGit": "非 git 目录",
   "repoSessionCount": "{n} 个会话",
+  "repoSessionsTitle": "仓库会话",
+  "repoSessionsHint": "按会话 cwd 匹配当前仓库（含子目录）；默认只显示未归档会话。",
   "saOverview": "概览",
   "saSourcesTab": "来源",
   "saSettingsTab": "配置",

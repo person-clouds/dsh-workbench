@@ -1,14 +1,15 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 
 import { archivedFilter, listParams, paginate } from '../lib/list.js'
-import { repoTree } from '../lib/repos.js'
+import { repoSessionPage, repoTree, reposOverview } from '../lib/repos.js'
+import { createTitleCache } from '../lib/title-cache.js'
 import { sessionsPage, workspacesOverview } from '../lib/workspaces.js'
 
-function fakeContext() {
+function fakeContext(options = {}) {
   const now = Date.now()
   const workspace = {
     id: 'ws-1', title: 'Workspace', path: '/tmp/ws-1',
@@ -27,15 +28,24 @@ function fakeContext() {
     pinnedSessionIds: ['s1'],
     list: () => [workspace],
   }
+  const titleReads = []
   const sessionQuery = {
     listSessions: async () => records,
-    readTitleSnapshots: async ids => ids.map(sessionId => ({
-      status: 'fulfilled', sessionId, value: { title: { title: `Title ${sessionId}` } },
-    })),
+    readTitleSnapshots: async ids => {
+      titleReads.push(ids)
+      return ids.map(sessionId => ({
+        status: 'fulfilled', sessionId, value: { title: { title: `Title ${sessionId}` } },
+      }))
+    },
+  }
+  const projected = options.projected || {}
+  const sessionProjectionCache = {
+    cachedSnapshot: header => projected[header.id] ? { values: { title: projected[header.id] } } : undefined,
   }
   return {
-    ctx: { get: name => ({ workspaceRegistry: registry, sessionQuery })[name] },
+    ctx: { get: name => ({ workspaceRegistry: registry, sessionQuery, sessionProjectionCache })[name] },
     workspace,
+    titleReads,
   }
 }
 
@@ -69,6 +79,57 @@ test('工作区与会话默认只看未归档，且会话分页由服务端完�
 
   const all = await sessionsPage(ctx, { workspace: 'ws-1', archived: 'all', offset: 0, limit: 10, sort: 'createdAt', dir: 'desc' })
   assert.deepEqual(all.sessions.map(session => session.id), ['s1', 's2', 's4'])
+})
+
+test('会话标题只补当前页，永久缓存命中后不再读日志', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-workbench-title-'))
+  try {
+    const cache = createTitleCache({ titleFile: join(root, 'session-titles.json') })
+    const { ctx, titleReads } = fakeContext()
+    const all = { workspace: 'ws-1', archived: 'all', sort: 'createdAt', dir: 'desc', cache }
+    const last = await sessionsPage(ctx, { ...all, offset: 2, limit: 2 })
+    assert.deepEqual(last.sessions.map(session => session.id), ['s4'])
+    assert.deepEqual(titleReads.at(-1), ['s4'])
+
+    const first = await sessionsPage(ctx, { ...all, offset: 0, limit: 2 })
+    assert.deepEqual(first.sessions.map(session => session.id), ['s1', 's2'])
+    assert.deepEqual(titleReads.at(-1), ['s1', 's2'])
+    assert.equal(first.sessions[0].title, 'Title s1')
+
+    const before = titleReads.length
+    const again = await sessionsPage(ctx, { ...all, offset: 0, limit: 2 })
+    assert.equal(titleReads.length, before)
+    assert.deepEqual(again.sessions.map(session => session.title), ['Title s1', 'Title s2'])
+    const file = JSON.parse(await readFile(join(root, 'session-titles.json'), 'utf8'))
+    assert.equal(file.sessions.s4.title, 'Title s4')
+    assert.equal(file.sessions.s2.title, 'Title s2')
+    const restarted = createTitleCache({ titleFile: join(root, 'session-titles.json') })
+    assert.equal((await restarted.getMany(['s2'])).get('s2').title, 'Title s2')
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('DSH 投影缓存已有标题时当前页不再读该会话日志', async () => {
+  const { ctx, titleReads } = fakeContext({ projected: { s1: 'Projected s1' } })
+  const overview = await workspacesOverview(ctx, { archived: 'active', offset: 0, limit: 8, sort: 'updatedAt', dir: 'desc', sessionLimit: 10 })
+  assert.equal(overview.workspaces[0].sessions[0].title, 'Projected s1')
+  assert.deepEqual(titleReads.at(-1), ['s4'])
+})
+
+test('仓库会话按服务端分页且仓库列表不再携带会话', async () => {
+  const { ctx, titleReads } = fakeContext()
+  const repo = { id: 'repo-1', name: 'Workspace', description: '', path: '/tmp/ws-1', mode: 'worktree', ref: '', exclude: [] }
+  const page = await repoSessionPage(ctx, repo, { archived: 'all', offset: 1, limit: 1, sort: 'createdAt', dir: 'desc' })
+  assert.equal(page.total, 3)
+  assert.deepEqual(page.sessions.map(session => session.id), ['s2'])
+  assert.deepEqual(titleReads.at(-1), ['s2'])
+  const active = await repoSessionPage(ctx, repo, { archived: 'active', offset: 0, limit: 10, sort: 'createdAt', dir: 'desc' })
+  assert.deepEqual(active.sessions.map(session => session.id), ['s1', 's4'])
+  const overview = await reposOverview([repo])
+  assert.equal(overview.length, 1)
+  assert.equal(Object.hasOwn(overview[0], 'sessions'), false)
+  assert.equal(Object.hasOwn(overview[0], 'sessionTotal'), false)
 })
 
 test('目录树只返回当前页直接子项', async () => {

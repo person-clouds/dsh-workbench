@@ -141,6 +141,8 @@
   "repoGit": "git repository",
   "repoNoGit": "non-git directory",
   "repoSessionCount": "{n} sessions",
+  "repoSessionsTitle": "Repository sessions",
+  "repoSessionsHint": "Matched by session cwd under this repository (including subdirectories); unarchived only by default.",
   "saOverview": "Overview",
   "saSourcesTab": "Sources",
   "saSettingsTab": "Settings",

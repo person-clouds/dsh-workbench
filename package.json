@@ -15,6 +15,7 @@
     "cordis.patch.yml",
     "lib/tickets.js",
     "lib/list.js",
+    "lib/title-cache.js",
     "lib/gitdata.js",
     "lib/markdown.js",
     "lib/repos.js",

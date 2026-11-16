@@ -19,7 +19,7 @@
 | 标签页 | 内容 |
 |---|---|
 | 工作区 | 读取 DSH `workspaceRegistry`：工作区卡片服务端分页 + 「未分组」桶；会话默认只显示**未归档**，顶部可切换未归档/已归档/全部；每张卡片显示当前页会话，翻页由服务端完成 |
-| 仓库 | SA 交付仓库 + DSH 工作区路径 + `<stateDir>/work/*` 工单子项目，自动检测 git；仓库卡片每页 4 个并按更新时间（最新提交时间，非 git 目录取 mtime）倒序，目录逐层加载也由服务端分页，展示文件内容、最近提交、未提交改动数、未归档会话名 |
+| 仓库 | SA 交付仓库 + DSH 工作区路径 + `<stateDir>/work/*` 工单子项目，自动检测 git；仓库卡片每页 4 个并按更新时间（最新提交时间，非 git 目录取 mtime）倒序；仓库列表不附带会话，进入仓库后单独分页展示该仓库会话（默认 10 条/页），目录逐层加载也由服务端分页 |
 | 文档 | 仓库选择服务端分页；选择后按需读取该仓库的 Markdown 索引，目录默认收起，点击逐层展开 |
 | 工单 | SA 工单列表服务端分页，默认只查进行中；详情含报告、diff、工单记录；可直接重试/停止；列表不对全库逐条查 git |
 | SA 控制 | 一键切到 `dsh-superagent` 原生 main 面板：概览 / 来源 / 触发 / 评估 / 执行 / 设置与提示词。工作台独有但原生暂缺的能力只登记在 [`PLAN-sa-ui-migration.md`](PLAN-sa-ui-migration.md)，本轮不实现 |
@@ -29,7 +29,7 @@
 | 数据 | 来源 | 说明 |
 |---|---|---|
 | 工作区、会话归属 | DSH `ctx.workspaceRegistry` | 与 DSH Web UI 同一份事实；未分组由 Host 端计算 |
-| 会话标题 | DSH `ctx.sessionQuery` | `readTitleSnapshots`；工作区/仓库列表直接带回标题 |
+| 会话标题 | DSH 投影缓存 + 永久标题缓存 + `ctx.sessionQuery` | 先查实时/持久化投影，再查 `<dshHome>/state/workbench/session-titles.json`；只有当前页缺标题时才 `readTitleSnapshots` 并回写缓存 |
 | 仓库清单 | `config.repos` + SA 交付仓库 + DSH 工作区 + `<stateDir>/work/*` | 按真实路径去重，来源标记为 configured / sa-delivery / workspace / sa-work |
 | 工单、报告、SA 设置 | `~/.dsh/state/superagent/orchestrator.sqlite` | 只读打开，WAL 可读 |
 | 工单记录 | 交付仓库 `origin/main` 的 `docs/work/<id8>-*.md` | 只读 git 对象 |
@@ -47,8 +47,11 @@
 - 排序字段与方向走白名单，非法值回退默认；时间列表默认时间倒序并用唯一 id 做稳定次级键；
 - 仓库列表默认每页 4 条，按 `updatedAt`（最新提交时间；非 git 目录回退 mtime）倒序；
 - 工单列表只对当前页解析文档标题，不再为整库每条执行 `buildDiff`；
-- 目录树按一层返回 `entries + total + hasMore`；工作区会话卡片额外分页接口
-  `view=sessions&workspace=<id|ungrouped>&offset=&limit=&archived=`。
+- 目录树按一层返回 `entries + total + hasMore`；工作区会话卡片分页接口为
+  `view=sessions&workspace=<id|ungrouped>&offset=&limit=&archived=`，仓库详情会话分页接口为
+  `view=repoSessions&repo=<id>&offset=&limit=&archived=`；
+- 会话标题先查 DSH 投影缓存与永久标题缓存，只有当前页仍缺标题的会话才读日志；
+  `sort=title` 时才先补全标题再排序。归档会话标题读取成功后永久缓存，重启后仍可直接命中。
 
 ## 安装
 
@@ -132,7 +135,8 @@ task/dsh-workbench/
 ├── lib/repos.js          # 只读仓库：文档索引 / 目录树 / 文件内容
 ├── lib/workspaces.js     # DSH workspaceRegistry + 未分组 + 会话分页
 ├── lib/list.js           # 列表分页/归档筛选/排序白名单
-├── lib/sessions.js       # sessionQuery 会话目录与标题快照
+├── lib/sessions.js       # sessionQuery 会话目录；按页补标题
+├── lib/title-cache.js    # 归档会话标题永久缓存（原子写、失败仅告警）
 ├── lib/retention.js      # 60 天保留、安全检查与清理台账
 ├── lib/sa.js             # SA 管理 API 白名单代理
 ├── client.js             # 浏览器侧：侧栏图标 + 5 个标签页；SA 控制切原生面板

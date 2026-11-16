@@ -17,7 +17,7 @@ Sidebar icon (id `dsh-workbench`, label “DSH 工作台”) → `main` slot:
 | Tab | Content |
 |---|---|
 | Workspaces | Reads DSH `workspaceRegistry`: server-paged workspace cards plus an explicit “ungrouped” bucket; sessions default to **unarchived**, with an unarchived/archived/all switch; each card pages sessions on the server |
-| Repos | SA delivery repo + DSH workspace paths + `<stateDir>/work/*` ticket subprojects; auto-detects git; server-paged repo cards and directory tree, file content, recent commits, dirty count, unarchived session names |
+| Repos | SA delivery repo + DSH workspace paths + `<stateDir>/work/*` ticket subprojects; auto-detects git; server-paged repo cards and directory tree, file content, recent commits, dirty count; the repo list carries no sessions and the repo detail pages that repo's sessions separately (10/page by default) |
 | Docs | Lists repos first, then loads that repo’s Markdown index on demand; folders are collapsed by default and expand level by level |
 | Tickets | Server-paged SA ticket list, active-only by default; details contain reports, diffs and ticket records; retry/stop directly; the list does not run git lookups for every ticket |
 | SA Control | Opens the genuine `dsh-superagent` main panel: Overview / Sources / Triggers / Eval / Execution / Settings & prompts. Workbench-only capabilities missing from the native page are listed in [`PLAN-sa-ui-migration.md`](PLAN-sa-ui-migration.md); not implemented in this round |
@@ -27,7 +27,7 @@ Sidebar icon (id `dsh-workbench`, label “DSH 工作台”) → `main` slot:
 | Data | Source | Notes |
 |---|---|---|
 | Workspaces, session ownership | DSH `ctx.workspaceRegistry` | Same source as the DSH Web UI; ungrouped is computed on the Host |
-| Session titles | DSH `ctx.sessionQuery` | `readTitleSnapshots`; returned with workspace/repo lists |
+| Session titles | DSH projection cache + permanent title cache + `ctx.sessionQuery` | Reads live/persisted projections first, then `<dshHome>/state/workbench/session-titles.json`; only current-page misses call `readTitleSnapshots` and write back |
 | Repo list | `config.repos` + SA delivery repo + DSH workspaces + `<stateDir>/work/*` | Deduplicated by real path; tagged configured / sa-delivery / workspace / sa-work |
 | Tickets, reports, SA settings | `~/.dsh/state/superagent/orchestrator.sqlite` | Opened read-only; WAL readable |
 | Ticket records | `docs/work/<id8>-*.md` in the delivery repo's `origin/main` | Read-only git objects |
@@ -47,7 +47,11 @@ Sidebar icon (id `dsh-workbench`, label “DSH 工作台”) → `main` slot:
 - The ticket list resolves document titles only for the current page and no longer runs `buildDiff`
   for every ticket in the database;
 - Directory trees return one level with `entries + total + hasMore`; workspace session cards page via
-  `view=sessions&workspace=<id|ungrouped>&offset=&limit=&archived=`.
+  `view=sessions&workspace=<id|ungrouped>&offset=&limit=&archived=`, and repo detail sessions page via
+  `view=repoSessions&repo=<id>&offset=&limit=&archived=`;
+- Session titles check the DSH projection cache and permanent title cache first; only current-page
+  misses read logs. `sort=title` hydrates before sorting. A successfully read archived title is cached
+  permanently and survives a restart.
 
 ## Install
 
@@ -122,7 +126,8 @@ task/dsh-workbench/
 ├── lib/repos.js          # read-only repos: docs index / tree / file contents
 ├── lib/workspaces.js     # DSH workspaceRegistry + ungrouped + session paging
 ├── lib/list.js           # list paging / archive filter / sort allow-list
-├── lib/sessions.js       # sessionQuery session catalog and title snapshots
+├── lib/sessions.js       # sessionQuery session catalog; per-page title hydration
+├── lib/title-cache.js    # permanent archived-title cache (atomic writes, warn-only failures)
 ├── lib/retention.js      # 60-day retention, safety checks and cleanup ledger
 ├── lib/sa.js             # SA management API allowlist proxy
 ├── client.js             # browser side: sidebar icon + 5 tabs; SA Control opens native panel
