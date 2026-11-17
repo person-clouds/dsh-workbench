@@ -256,5 +256,9 @@
   "readFailed": "读取失败：{message}",
   "lineNo": "行号",
   "repoPath": "路径",
-  "refreshedAt": "更新于 {time}"
+  "refreshedAt": "更新于 {time}",
+  "okDescription": "清除当前会话的 TODO 标记并归档",
+  "okCleared": "已清除 TODO，正在归档会话",
+  "okNoTodo": "当前会话没有 TODO 标记，正在归档",
+  "okFailed": "操作失败："
 }

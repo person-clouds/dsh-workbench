@@ -14,6 +14,7 @@ window.__ModuleLoader__.load({
     const React = require('react')
     const h = React.createElement
     const API = '/dsh-workbench/api'
+    const stripTodoPrefix = title => String(title ?? '').replace(/^TODO[：:]\s*/u, '')
     const PANEL_ID = 'dsh-workbench'
     const NS = 'dshWorkbench'
     const REFRESH_MS = 20_000
@@ -279,7 +280,11 @@ window.__ModuleLoader__.load({
       "readFailed": "读取失败：{message}",
       "lineNo": "行号",
       "repoPath": "路径",
-      "refreshedAt": "更新于 {time}"
+      "refreshedAt": "更新于 {time}",
+      "okDescription": "清除当前会话的 TODO 标记并归档",
+      "okCleared": "已清除 TODO，正在归档会话",
+      "okNoTodo": "当前会话没有 TODO 标记，正在归档",
+      "okFailed": "操作失败："
     }
     const en = {
       "meta": {
@@ -540,7 +545,11 @@ window.__ModuleLoader__.load({
       "readFailed": "Could not load: {message}",
       "lineNo": "Line",
       "repoPath": "Path",
-      "refreshedAt": "Updated {time}"
+      "refreshedAt": "Updated {time}",
+      "okDescription": "Clear this session's TODO marker and archive it",
+      "okCleared": "TODO cleared; archiving this session",
+      "okNoTodo": "No TODO marker; archiving this session",
+      "okFailed": "Failed: "
     }
 
     // ---------------- 样式：只用 --dsw-alias-* 主题令牌，跟随明暗与字体 ----------------
@@ -2298,11 +2307,53 @@ window.__ModuleLoader__.load({
         h('circle', { cx: 17, cy: 8, r: 1.6, fill: 'currentColor', stroke: 'none' }))
 
     return {
-      inject: ['slots', 'locale', 'layout'],
+      inject: ['slots', 'locale', 'layout', 'inputTriggers', 'sessions'],
       apply(ctx) {
         // DSH 内置语言 id 是 zh / en；再保留 zh-CN 以兼容浏览器区域标签。
         ctx.effect(() => ctx.locale.register(NS, { zh, 'zh-CN': zh, en }), 'dsh-workbench: dictionaries')
         const t = ctx.locale.bind(NS)
+        const sessions = ctx.get('sessions')
+        const inputTriggers = ctx.get('inputTriggers')
+        if (sessions && inputTriggers) {
+          const archive = async sessionId => {
+            const response = await fetch(`${API}/archive`, {
+              method: 'POST', credentials: 'same-origin',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ sessionId }),
+            })
+            if (!response.ok) throw new Error(`archive HTTP ${response.status}`)
+          }
+          const claim = session => ({
+            name: 'ok',
+            token: '/ok ',
+            submit: async () => {
+              let hadTodo = false
+              try {
+                await sessions.using(session.sessionId, { source: 'dsh-workbench-ok' }, async reference => {
+                  const snapshot = reference.binding.session.getSnapshot()
+                  const title = String(snapshot && snapshot.title || '')
+                  const next = stripTodoPrefix(title)
+                  hadTodo = next !== title
+                  if (hadTodo) await reference.binding.session.rename(next)
+                })
+              } catch (error) {
+                return { kind: 'error', text: `${t('okFailed')}${error && error.message ? error.message : error}` }
+              }
+              queueMicrotask(() => { archive(session.sessionId).catch(error => console.warn('dsh-workbench: 归档会话失败', error)) })
+              return { kind: 'success', text: t(hadTodo ? 'okCleared' : 'okNoTodo') }
+            },
+          })
+          ctx.effect(() => inputTriggers.registerSource({
+            trigger: '/',
+            name: 'dsh-workbench-todo',
+            order: 30,
+            showGroupTitle: false,
+            candidates: async () => [{ name: 'ok', label: '/ok', description: t('okDescription') }],
+            matchSpace: (session, token) => token.toLowerCase() === '/ok' ? { claim: claim(session) } : undefined,
+            matchEnter: async (session, line) => line.trim().toLowerCase() === '/ok' ? { claim: claim(session) } : undefined,
+            onPick: pick => pick.candidate.name === 'ok' ? { claim: claim(pick.session) } : undefined,
+          }), 'dsh-workbench: /ok command source')
+        }
         ctx.slots.inject('main', () => ctx.slots.register(
           { name: 'main', key: PANEL_ID, locale: NS },
           (props) => h(Workbench, { t: props.t || t, ctx }),

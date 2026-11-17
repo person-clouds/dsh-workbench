@@ -20,6 +20,7 @@ import { loadTickets } from './lib/tickets.js'
 import { retentionFile, retentionSnapshot, runCleanup } from './lib/retention.js'
 import { sessionsPage, workspaceRepos, workspacesOverview } from './lib/workspaces.js'
 import { createTitleCache } from './lib/title-cache.js'
+import { hasUserActionMarker, withTodoPrefix } from './lib/todo.js'
 
 export const name = 'dsh-workbench'
 /** webServer 提供路由，connection 提供 Host / Origin 校验与浏览器鉴权。 */
@@ -65,6 +66,23 @@ function titleCacheOf(ctx, config) {
     }))
   }
   return titleCaches.get(key)
+}
+
+/** 从 assistant 消息的 content 中提取可见文本。 */
+function assistantText(message) {
+  const content = Array.isArray(message && message.content) ? message.content : []
+  return content.filter(block => block && block.type === 'text' && typeof block.text === 'string').map(block => block.text).join('\n')
+}
+
+/** 内部 subagent 会话不参与 TODO 标记。 */
+function isSubagentSession(session) {
+  const meta = (session && (session.header || session.meta)) || {}
+  return meta.origin === 'subagent' || meta.parentSession !== undefined || meta.delegationDepth !== undefined
+}
+
+function titleOf(snapshot) {
+  if (typeof snapshot === 'string') return snapshot
+  return String(snapshot && snapshot.title || '')
 }
 
 function dbPathOf(config) {
@@ -321,6 +339,25 @@ function serveRoute(ctx, config) {
       res.end(refusal === 401 ? 'unauthorized' : 'forbidden')
       return
     }
+    if (url.pathname === '/dsh-workbench/api/archive') {
+      if (req.method !== 'POST') {
+        res.writeHead(405, { allow: 'POST' })
+        res.end()
+        return
+      }
+      try {
+        const body = await readJsonBody(req)
+        const sessionId = String(body.sessionId || '').trim()
+        if (!sessionId) return json(res, 400, { error: '缺少 sessionId' })
+        const registry = ctx.get('workspaceRegistry')
+        if (!registry || typeof registry.archiveSession !== 'function') return json(res, 503, { error: 'workspaceRegistry 不可用' })
+        const archived = Array.isArray(registry.archivedSessionIds) && registry.archivedSessionIds.includes(sessionId)
+        if (!archived) await registry.archiveSession(sessionId, { stopActivity: true })
+        return json(res, 200, { ok: true, archived: true, sessionId })
+      } catch (error) {
+        return json(res, 500, { error: String(error && error.message ? error.message : error) })
+      }
+    }
     if (url.pathname === '/dsh-workbench/api/sa') {
       await proxySa(ctx, config, req, res, url)
       return
@@ -386,6 +423,34 @@ export function apply(ctx, config) {
     handler: serveRoute(ctx, config),
   }
   ctx.effect(() => ctx.webServer.register(route), 'dsh-workbench: api route')
+
+  const systemPrompt = ctx.get('systemPrompt')
+  if (systemPrompt && typeof systemPrompt.section === 'function') {
+    ctx.effect(() => systemPrompt.section({
+      name: 'dsh-workbench-user-action',
+      order: 10,
+      interpolate: false,
+      text: () => '仅当这一回合结束时用户必须执行下一步操作、确认或运行命令，才在最后一条助手消息末尾另起一行输出隐藏标记 <!-- dsh:user-action -->；其他情况禁止输出。禁止在正文、代码块、引用或说明中提及或引用该标记。',
+    }), 'dsh-workbench: user action prompt')
+  }
+
+  const sessionTitle = ctx.get('sessionTitle')
+  if (sessionTitle && typeof sessionTitle.get === 'function' && typeof sessionTitle.rename === 'function') {
+    ctx.on('session/event', async (session, event) => {
+      try {
+        if (!event || event.type !== 'assistant/message' || isSubagentSession(session)) return
+        if (!hasUserActionMarker(assistantText(event.data && event.data.message))) return
+        const current = titleOf(sessionTitle.get(session))
+        if (!current) return
+        const next = withTodoPrefix(current)
+        if (next === current) return
+        await sessionTitle.rename(session, next)
+        await titleCacheOf(ctx, config).put([{ id: String(session.id), title: next, kind: 'session', cwd: String(session.header && session.header.cwd || '') }])
+      } catch (error) {
+        ctx.logger.warn('dsh-workbench: 更新 TODO 标题失败 %s', error)
+      }
+    })
+  }
 
   const minutes = Number(config.fetchMinutes) || 0
   if (minutes > 0 && looksLikeRepo(config.repoDir)) {

@@ -1,10 +1,21 @@
 # STATUS — DSH 工作台
 
-- 更新时间：2026-11-16（归档会话标题永久缓存与仓库会话分区）
+- 更新时间：2026-11-17（TODO 会话标记与 `/ok`）
 - 一句话：DSH 单 Host 下的统一工作台。面板覆盖工作区、仓库、文档、工单和 SA 控制；
   SA 控制直接切到 `dsh-superagent` 原生 main 面板，60 天保留与清理仍有 dry-run 和逐项安全检查。
 - 位置：`task/dsh-workbench/`；包名 `dsh-workbench@0.2.1`。
 - 计划：[`PLAN-dsh-workbench.md`](PLAN-dsh-workbench.md)、[`PLAN-sa-ui-migration.md`](PLAN-sa-ui-migration.md)。
+
+## 2026-11-17 最新：TODO 会话标记与 `/ok`
+
+- [x] 新增 `lib/todo.js`：末尾隐藏标记识别、`TODO：` 前缀幂等添加与去除；空标题回退 `未命名会话`。
+- [x] Host 注入系统提示，只在需要用户下一步动作时输出 `<!-- dsh:user-action -->`；监听 `assistant/message`，跳过 subagent，重命名标题并写永久标题缓存。
+- [x] 新增 `POST /dsh-workbench/api/archive`，经 `workspaceRegistry.archiveSession(..., { stopActivity: true })` 归档；不会删除日志或目录。
+- [x] 客户端注册 `/ok` 命令源：只清除当前会话 TODO 前缀并异步归档，不发送 prompt、不产生新回合。
+- [x] 新增 `handover/test-workbench-todo.mjs` 并通过。
+- [x] SA 飞书入站拦截人类 `/ok`：停止关联 open Ticket、恢复 worker 标题、归档 worker/评估会话并回复。
+- [x] 校验：`node --check index.js/client.js/lib/todo.js`、Workbench 定向测试、SA `pnpm check` 通过。
+
 
 ## 2026-11-16 最新：归档会话标题缓存与仓库会话分区
 

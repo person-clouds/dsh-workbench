@@ -256,5 +256,9 @@
   "readFailed": "Could not load: {message}",
   "lineNo": "Line",
   "repoPath": "Path",
-  "refreshedAt": "Updated {time}"
+  "refreshedAt": "Updated {time}",
+  "okDescription": "Clear this session's TODO marker and archive it",
+  "okCleared": "TODO cleared; archiving this session",
+  "okNoTodo": "No TODO marker; archiving this session",
+  "okFailed": "Failed: "
 }

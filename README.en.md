@@ -150,3 +150,8 @@ task/dsh-workbench/
 - A single diff is truncated at 400 KB; files over 2 MB or binary files are not inlined.
 - No full-text code search.
 - Anyone who can see the workbench can see tickets, docs and code (same as DSH login state).
+
+## TODO and `/ok`
+
+- When a user-visible session needs the user's next action, a hidden marker turns its title into `TODO: <title>`; subagent sessions are excluded.
+- Sending `/ok` in the composer strips the prefix and archives the session asynchronously without sending a message or starting a model turn.
