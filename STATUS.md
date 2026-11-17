@@ -11,7 +11,7 @@
 - [x] 新增 `lib/todo.js`：末尾隐藏标记识别、`TODO：` 前缀幂等添加与去除；空标题回退 `未命名会话`。
 - [x] Host 注入系统提示，只在需要用户下一步动作时输出 `<!-- dsh:user-action -->`；监听 `assistant/message`，跳过 subagent，重命名标题并写永久标题缓存。
 - [x] 新增 `POST /dsh-workbench/api/archive`，经 `workspaceRegistry.archiveSession(..., { stopActivity: true })` 归档；不会删除日志或目录。
-- [x] 客户端注册 `/ok` 命令源：只清除当前会话 TODO 前缀并异步归档，不发送 prompt、不产生新回合。
+- [x] 客户端注册 `/ok` 命令源：只清除当前会话 TODO 前缀，命令结果输出后延迟约 1.5 秒异步归档，不发送 prompt、不产生新回合。
 - [x] 新增 `handover/test-workbench-todo.mjs` 并通过。
 - [x] SA 飞书入站拦截人类 `/ok`：停止关联 open Ticket、恢复 worker 标题、归档 worker/评估会话并回复。
 - [x] 校验：`node --check index.js/client.js/lib/todo.js`、Workbench 定向测试、SA `pnpm check` 通过。

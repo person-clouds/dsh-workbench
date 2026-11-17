@@ -15,6 +15,7 @@ window.__ModuleLoader__.load({
     const h = React.createElement
     const API = '/dsh-workbench/api'
     const stripTodoPrefix = title => String(title ?? '').replace(/^TODO[：:]\s*/u, '')
+    const ARCHIVE_DELAY_MS = 1500
     const PANEL_ID = 'dsh-workbench'
     const NS = 'dshWorkbench'
     const REFRESH_MS = 20_000
@@ -282,8 +283,8 @@ window.__ModuleLoader__.load({
       "repoPath": "路径",
       "refreshedAt": "更新于 {time}",
       "okDescription": "清除当前会话的 TODO 标记并归档",
-      "okCleared": "已清除 TODO，正在归档会话",
-      "okNoTodo": "当前会话没有 TODO 标记，正在归档",
+      "okCleared": "已清除 TODO，稍后自动归档会话",
+      "okNoTodo": "当前会话没有 TODO 标记，稍后自动归档",
       "okFailed": "操作失败："
     }
     const en = {
@@ -547,8 +548,8 @@ window.__ModuleLoader__.load({
       "repoPath": "Path",
       "refreshedAt": "Updated {time}",
       "okDescription": "Clear this session's TODO marker and archive it",
-      "okCleared": "TODO cleared; archiving this session",
-      "okNoTodo": "No TODO marker; archiving this session",
+      "okCleared": "TODO cleared; archiving this session shortly",
+      "okNoTodo": "No TODO marker; archiving this session shortly",
       "okFailed": "Failed: "
     }
 
@@ -2339,7 +2340,7 @@ window.__ModuleLoader__.load({
               } catch (error) {
                 return { kind: 'error', text: `${t('okFailed')}${error && error.message ? error.message : error}` }
               }
-              queueMicrotask(() => { archive(session.sessionId).catch(error => console.warn('dsh-workbench: 归档会话失败', error)) })
+              setTimeout(() => { archive(session.sessionId).catch(error => console.warn('dsh-workbench: 归档会话失败', error)) }, ARCHIVE_DELAY_MS)
               return { kind: 'success', text: t(hadTodo ? 'okCleared' : 'okNoTodo') }
             },
           })
