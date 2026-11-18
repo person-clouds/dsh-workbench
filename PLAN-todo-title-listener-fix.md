@@ -1,7 +1,7 @@
 ---
 audience: human
 status: current
-implementation_status: not_started
+implementation_status: in_progress
 ---
 
 # PLAN：TODO 标题监听器时序与旧标记可见性修复
@@ -209,7 +209,13 @@ systemctl --user restart dsh-web.service
 - [ ] `/ok` 清理与归档回归通过。
 - [ ] `STATUS.md` 记录验证结果。
 
-## 七、后续会话启动提示
+## 七、实施进展
+
+- 2026-11-18：第三节代码与测试已完成并本地验证通过（`node --check`、四个 `handover` 测试、`npm pack --dry-run`）。
+  监听改由 `ctx.inject(['sessionTitle'], ...)` 挂载，`systemPrompt` 同步改为 `ctx.inject`；诊断告警按「会话 + 原因」去重。
+- 剩余：等用户重启 `dsh-web.service` 后按第六节做真实会话验收，通过后把 `implementation_status` 改为 `done` 并更新 `STATUS.md`。
+
+## 八、后续会话启动提示
 
 新会话接手时先读本文件与 [`PLAN-todo-user-action.md`](PLAN-todo-user-action.md)，确认：
 

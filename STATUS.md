@@ -1,12 +1,22 @@
 # STATUS — DSH 工作台
 
-- 更新时间：2026-11-18（TODO 标记改为不可见字符并修复主会话误判）
+- 更新时间：2026-11-18（TODO 标题监听改为等 sessionTitle 就绪后挂载）
 - 一句话：DSH 单 Host 下的统一工作台。面板覆盖工作区、仓库、文档、工单和 SA 控制；
   SA 控制直接切到 `dsh-superagent` 原生 main 面板，60 天保留与清理仍有 dry-run 和逐项安全检查。
 - 位置：`dsh-workbench/`；包名 `dsh-workbench@0.2.1`。
 - 计划：[`PLAN-dsh-workbench.md`](PLAN-dsh-workbench.md)、[`PLAN-sa-ui-migration.md`](PLAN-sa-ui-migration.md)。
 
-## 2026-11-18 最新：TODO 标记可见性与主会话判定修复
+## 2026-11-18 最新：TODO 标题监听时序修复
+
+- [x] 线上证据显示标题未改名的根因是监听器没挂载：`apply()` 里一次性 `ctx.get('sessionTitle')` 时服务尚未就绪，拿不到就永久跳过，且无日志。修复见 [`PLAN-todo-title-listener-fix.md`](PLAN-todo-title-listener-fix.md)。
+- [x] `index.js` 改为 `ctx.inject(['sessionTitle'], ...)` 延迟挂载 `session/event` 监听，挂载成功打 `info`「sessionTitle 就绪，TODO 标题监听已挂载」；`systemPrompt` section 同样改用 `ctx.inject`，避免同类时序隐患。
+- [x] 诊断日志：命中标记但 `sessionTitle` 不可用、当前标题为空时按会话去重 `warn` 一次并带会话 id；`rename` 失败日志补会话 id；未命中标记不打日志。
+- [x] 提示词补「历史消息中旧版 HTML 注释式标记视为过时格式，禁止模仿、复制或再输出」，且不复述完整旧标记文本。
+- [x] 测试 `handover/test-workbench-index.mjs` 新增：延迟挂载、晚挂载监听仍改名、服务缺失告警去重、标题为空告警、旧 HTML 注释兼容、提示词约束与不含旧标记；原有矩阵保留。
+- [x] 校验：`node --check index.js client.js lib/todo.js`、`node --test handover/test-workbench-todo.mjs handover/test-workbench-index.mjs`、`test-workbench-lists.mjs`、`test-workbench-repos.mjs`、`test-retention-scripts.sh`、`npm pack --dry-run` 全部通过。
+- [ ] 待用户重启 `dsh-web.service` 并硬刷新后，在新会话确认真实改名、日志出现挂载 `info`，并回归 `/ok` 恢复与归档。
+
+## 2026-11-18 上一轮：TODO 标记可见性与主会话判定修复
 
 - [x] 第一次重启验证发现 `<!-- dsh:user-action -->` 在 DSH 消息渲染层会原文显示；改为消息末尾两个不可见 `U+2063`（INVISIBLE SEPARATOR），系统提示禁止再输出 HTML 注释，检测器兼容旧注释。
 - [x] 修复 `isSubagentSession()` 把 `delegationDepth: 0` 主会话误判为 subagent：判断改为 `delegationDepth > 0`，并移入 `lib/todo.js` 的 `isSubagentMeta()`。
