@@ -5,13 +5,14 @@ import { join } from 'node:path'
 import test from 'node:test'
 
 import { onAssistantMessage, todoStateOf } from '../index.js'
+import { USER_ACTION_MARKER } from '../lib/todo.js'
 
 function fixture(options = {}) {
   const calls = []
   let current = options.title ?? '修复登录'
   const session = {
     id: 's1',
-    header: { cwd: '/tmp/ws', origin: options.origin },
+    header: { cwd: '/tmp/ws', origin: options.origin, delegationDepth: options.delegationDepth },
     meta: {},
   }
   const sessionTitle = {
@@ -40,9 +41,9 @@ test('末尾隐藏标记触发 TODO 标题且已带前缀时不重复', async ()
   const dir = await mkdtemp(join(tmpdir(), 'dsh-workbench-index-'))
   try {
     const { ctx, session, calls } = fixture()
-    assert.equal(await onAssistantMessage(ctx, { titleFile: join(dir, 'titles.json') }, session, message('请确认\n<!-- dsh:user-action -->')), true)
+    assert.equal(await onAssistantMessage(ctx, { titleFile: join(dir, 'titles.json') }, session, message(`请确认\n${USER_ACTION_MARKER}`)), true)
     assert.deepEqual(calls, ['TODO：修复登录'])
-    assert.equal(await onAssistantMessage(ctx, { titleFile: join(dir, 'titles.json') }, session, message('再次确认\n<!-- dsh:user-action -->')), false)
+    assert.equal(await onAssistantMessage(ctx, { titleFile: join(dir, 'titles.json') }, session, message(`再次确认\n${USER_ACTION_MARKER}`)), false)
     assert.deepEqual(calls, ['TODO：修复登录'])
   } finally {
     await rm(dir, { recursive: true, force: true })
@@ -66,12 +67,20 @@ test('标记在中间、代码块或 reasoning 中不触发', async () => {
   }
 })
 
-test('subagent 会话不触发 TODO', async () => {
+test('主会话 delegationDepth 0 可触发，subagent 不触发', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'dsh-workbench-index-'))
   try {
-    const { ctx, session, calls } = fixture({ origin: 'subagent' })
-    assert.equal(await onAssistantMessage(ctx, { titleFile: join(dir, 'titles.json') }, session, message('需要确认\n<!-- dsh:user-action -->')), false)
-    assert.deepEqual(calls, [])
+    const main = fixture({ delegationDepth: 0 })
+    assert.equal(await onAssistantMessage(main.ctx, { titleFile: join(dir, 'titles.json') }, main.session, message(`需要确认\n${USER_ACTION_MARKER}`)), true)
+    assert.deepEqual(main.calls, ['TODO：修复登录'])
+
+    const sub = fixture({ delegationDepth: 1 })
+    assert.equal(await onAssistantMessage(sub.ctx, { titleFile: join(dir, 'titles.json') }, sub.session, message(`需要确认\n${USER_ACTION_MARKER}`)), false)
+    assert.deepEqual(sub.calls, [])
+
+    const origin = fixture({ origin: 'subagent' })
+    assert.equal(await onAssistantMessage(origin.ctx, { titleFile: join(dir, 'titles.json') }, origin.session, message(`需要确认\n${USER_ACTION_MARKER}`)), false)
+    assert.deepEqual(origin.calls, [])
   } finally {
     await rm(dir, { recursive: true, force: true })
   }

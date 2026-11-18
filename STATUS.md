@@ -1,16 +1,24 @@
 # STATUS — DSH 工作台
 
-- 更新时间：2026-11-18（TODO 会话标记与 `/ok`）
+- 更新时间：2026-11-18（TODO 标记改为不可见字符并修复主会话误判）
 - 一句话：DSH 单 Host 下的统一工作台。面板覆盖工作区、仓库、文档、工单和 SA 控制；
   SA 控制直接切到 `dsh-superagent` 原生 main 面板，60 天保留与清理仍有 dry-run 和逐项安全检查。
 - 位置：`task/dsh-workbench/`；包名 `dsh-workbench@0.2.1`。
 - 计划：[`PLAN-dsh-workbench.md`](PLAN-dsh-workbench.md)、[`PLAN-sa-ui-migration.md`](PLAN-sa-ui-migration.md)。
 
-## 2026-11-17 最新：TODO 会话标记与 `/ok`
+## 2026-11-18 最新：TODO 标记可见性与主会话判定修复
+
+- [x] 第一次重启验证发现 `<!-- dsh:user-action -->` 在 DSH 消息渲染层会原文显示；改为消息末尾两个不可见 `U+2063`（INVISIBLE SEPARATOR），系统提示禁止再输出 HTML 注释，检测器兼容旧注释。
+- [x] 修复 `isSubagentSession()` 把 `delegationDepth: 0` 主会话误判为 subagent：判断改为 `delegationDepth > 0`，并移入 `lib/todo.js` 的 `isSubagentMeta()`。
+- [x] 更新 `handover/test-workbench-todo.mjs`、`handover/test-workbench-index.mjs`：覆盖不可见标记、旧标记兼容、主会话 depth 0 触发、depth > 0 与 `origin=subagent` 跳过。
+- [x] 校验：相关 `node --check` 与 `node --test handover/test-workbench-todo.mjs handover/test-workbench-index.mjs` 通过。
+- [ ] 待用户重启 `dsh-web.service` 并硬刷新后，在真实新会话确认标记不可见且标题变为 `TODO：...`。
+
+## 2026-11-17 上一轮：TODO 会话标记与 `/ok`
 
 - [x] 新增 `lib/todo.js`：末尾隐藏标记识别、`TODO：` 前缀幂等添加与去除；空标题回退 `未命名会话`。
 - [x] 新增只读辅助接口 `action=todoState&sessionId=`，返回当前标题与 `hasTodo`；并补 `handover/test-workbench-index.mjs` 覆盖监听接线、subagent 跳过和接口返回。
-- [x] Host 注入系统提示，只在需要用户下一步动作时输出 `<!-- dsh:user-action -->`；监听 `assistant/message`，跳过 subagent，重命名标题并写永久标题缓存。
+- [x] Host 注入系统提示，当时输出可见 HTML 注释标记；2026-11-18 已改为不可见 `U+2063`。监听 `assistant/message`，跳过 subagent，重命名标题并写永久标题缓存。
 - [x] 新增 `POST /dsh-workbench/api/archive`，经 `workspaceRegistry.archiveSession(..., { stopActivity: true })` 归档；不会删除日志或目录。
 - [x] 客户端注册 `/ok` 命令源：只清除当前会话 TODO 前缀，命令结果输出后延迟约 1.5 秒异步归档，不发送 prompt、不产生新回合。
 - [x] 新增 `handover/test-workbench-todo.mjs` 并通过。

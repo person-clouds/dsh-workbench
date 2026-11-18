@@ -1,9 +1,17 @@
 import assert from 'node:assert/strict'
-import { hasTodoPrefix, hasUserActionMarker, stripTodoPrefix, withTodoPrefix } from '../lib/todo.js'
+import { hasTodoPrefix, hasUserActionMarker, isSubagentMeta, stripTodoPrefix, USER_ACTION_MARKER, withTodoPrefix } from '../lib/todo.js'
 
+assert.equal(hasUserActionMarker(`请确认\n${USER_ACTION_MARKER}`), true)
+assert.equal(hasUserActionMarker('请确认\n\u2063'), true)
+assert.equal(hasUserActionMarker(`请确认\n${USER_ACTION_MARKER}\n`), true)
+assert.equal(hasUserActionMarker(`正文提及 ${USER_ACTION_MARKER} 但在中间`), false)
 assert.equal(hasUserActionMarker('请确认\n<!-- dsh:user-action -->'), true)
 assert.equal(hasUserActionMarker('正文提及 <!-- dsh:user-action --> 但在中间'), false)
 assert.equal(hasUserActionMarker('```html\n<!-- dsh:user-action -->\n```'), false)
+assert.equal(isSubagentMeta({ delegationDepth: 0 }), false)
+assert.equal(isSubagentMeta({ delegationDepth: 1 }), true)
+assert.equal(isSubagentMeta({ origin: 'subagent' }), true)
+assert.equal(isSubagentMeta({ parentSession: 'parent' }), true)
 assert.equal(hasTodoPrefix('TODO：修复登录'), true)
 assert.equal(hasTodoPrefix('TODO: 修复登录'), true)
 assert.equal(hasTodoPrefix('修复登录'), false)

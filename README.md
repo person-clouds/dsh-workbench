@@ -163,6 +163,6 @@ task/dsh-workbench/
 
 ## TODO 与 `/ok`
 
-- 用户可见会话需要用户下一步操作时，Agent 用隐藏标记让标题变成 `TODO：<原标题>`；subagent 会话不标记。
+- 用户可见会话需要用户下一步操作时，Agent 输出消息末尾两个不可见 `U+2063` 标记，让标题变成 `TODO：<原标题>`；`delegationDepth === 0` 的主会话可标记，subagent 会话不标记。
 - 在会话输入框发送 `/ok`：只清除标题前缀，命令结果输出后延迟约 1.5 秒再异步归档当前会话；不发送消息、不生成模型回合。
 - 只读辅助接口：`GET /dsh-workbench/api?action=todoState&sessionId=<id>` 返回当前 `title` 与 `hasTodo`；会话不存在返回 404。

@@ -4,11 +4,11 @@ status: current
 implementation_status: done
 ---
 
-# 计划：TODO 会话标记与 `/ok` 完成归档
+# PLAN：TODO 会话标记与 `/ok` 完成归档
 
-- 日期：2026-11-17
+- 日期：2026-11-17（2026-11-18 修订）
 - 决策：仅有用户下一步动作时由 Agent 输出隐藏标记；`/ok` 手动清除并异步归档；飞书 `/ok` 结束 Ticket、收尾并归档 worker 与评估会话
-- 前置：用户已确认命令为小写 `/ok`；群聊与私聊都接受；标记接受隐藏 HTML 注释
+- 前置：用户已确认命令为小写 `/ok`；群聊与私聊都接受；标记必须对用户不可见
 
 ## 目标
 
@@ -29,15 +29,15 @@ implementation_status: done
 ### 1. `dsh-workbench`
 
 - `lib/todo.js`（新）
-  - `hasUserActionMarker(text)`：匹配消息末尾隐藏标记 `<!-- dsh:user-action -->`。
+  - `hasUserActionMarker(text)`：匹配消息末尾不可见标记（两个 `U+2063`），并兼容旧的可见 `<!-- dsh:user-action -->`。
   - `withTodoPrefix(title)`：空标题回退 `未命名会话`；已以 `TODO：`/`TODO:` 开头则原样返回。
   - `stripTodoPrefix(title)`：只去掉开头一个 `TODO：`/`TODO:`。
 - `index.js`
   - 注入可选 `systemPrompt`、`sessionTitle`；兼容 `ctx.get(...)`。
-  - 注册全局 system prompt section：完成含“需要用户执行下一步/确认/跑命令”的回合时，在最后一条助手消息末尾另起一行输出 `<!-- dsh:user-action -->`；其他情况禁止输出，禁止在正文/代码块引用该标记。
+  - 注册全局 system prompt section：完成含“需要用户执行下一步/确认/跑命令”的回合时，在最后一条助手消息末尾另起一行输出两个不可见 `U+2063` 字符；其他情况禁止输出，禁止输出 HTML 注释或该标记的文字说明。
   - 监听 `session/event` 的 `assistant/message`：
     - 从 `event.data.message.content` 提取 text block；
-    - 末尾匹配标记且会话不是 `subagent`（`meta.origin === 'subagent'`、有 `parentSession`/`delegationDepth` 时跳过）；
+    - 末尾匹配标记且会话不是 `subagent`（`origin === 'subagent'`、有 `parentSession`、或 `delegationDepth > 0` 时跳过；`delegationDepth === 0` 是主会话）；
     - 取 `ctx.sessionTitle.get(session)`，幂等改名为 `TODO：...`；
     - 成功后 `titleCacheOf(ctx, config).put([...])` 更新 Workbench 标题缓存，失败只告警。
   - 新增只读辅助 API（可选）：`action=todoState&sessionId=` 返回当前标题，供客户端 `/ok` 校验。
@@ -84,12 +84,24 @@ implementation_status: done
 ## 验收
 
 - 普通会话需要用户操作时，标题变为 `TODO：<原名称>`；同一会话不重复叠加。
-- 无用户操作时标题不变；subagent 会话永不出现 TODO。
+- 标记在聊天界面中完全不可见，不显示 HTML 注释或 `U+2063` 原文。
+- 无用户操作时标题不变；`delegationDepth === 0` 的主会话可标记，`delegationDepth > 0` 的 subagent 永不出现 TODO。
 - DSH 内 `/ok` 后标题恢复并异步归档，且没有新用户消息、没有模型回复；当前会话从活动列表消失，归档筛选可见。
 - 飞书群话题/私聊发送 `/ok`：对应 Ticket 变为 ended/human/stopped，worker 停止，worker 标题恢复；worker 与评估会话归档；话题收到确认。
 - 飞书 `/ok` 不再进入评估/路由流程；bot 消息与未授权消息不触发。
 - Workbench 重启后标题仍正确；已有普通文本和代码块中的标记字符串不误触发。
 - `node --check client.js`、Workbench 定向测试、SA `pnpm check` 通过。
+
+## 2026-11-18 修订：标记可见与主会话误判
+
+第一次实施后重启验证发现两个缺陷，已在本文件与代码中修订：
+
+1. **标记原文可见**：DSH 消息渲染层不把 `<!-- dsh:user-action -->` 当隐藏 HTML 注释处理，而是按原文显示。
+   - 修订：标记改为消息末尾两个 `U+2063`（INVISIBLE SEPARATOR）；系统提示明确要求直接复制这两个不可见字符，禁止输出 HTML 注释；检测器保留旧注释兼容。
+2. **主会话标题未加 TODO**：`isSubagentSession()` 用 `meta.delegationDepth !== undefined` 判断，而主会话 header 为 `delegationDepth: 0`，导致所有主会话被当成 subagent 提前返回。
+   - 修订：判定改为 `delegationDepth > 0`，并把该判断移入 `lib/todo.js` 的 `isSubagentMeta()` 以便单测。
+
+验收补充：重启 `dsh-web.service` 并硬刷新后，新会话出现需要用户动作的回复时，界面看不到任何标记字符，标题变为 `TODO：...`。
 
 ## 回滚
 

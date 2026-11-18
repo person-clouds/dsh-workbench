@@ -20,7 +20,7 @@ import { loadTickets } from './lib/tickets.js'
 import { retentionFile, retentionSnapshot, runCleanup } from './lib/retention.js'
 import { sessionsPage, workspaceRepos, workspacesOverview } from './lib/workspaces.js'
 import { createTitleCache } from './lib/title-cache.js'
-import { hasTodoPrefix, hasUserActionMarker, withTodoPrefix } from './lib/todo.js'
+import { hasTodoPrefix, hasUserActionMarker, isSubagentMeta, USER_ACTION_MARKER, withTodoPrefix } from './lib/todo.js'
 
 export const name = 'dsh-workbench'
 /** webServer 提供路由，connection 提供 Host / Origin 校验与浏览器鉴权。 */
@@ -72,12 +72,6 @@ function titleCacheOf(ctx, config) {
 function assistantText(message) {
   const content = Array.isArray(message && message.content) ? message.content : []
   return content.filter(block => block && block.type === 'text' && typeof block.text === 'string').map(block => block.text).join('\n')
-}
-
-/** 内部 subagent 会话不参与 TODO 标记。 */
-function isSubagentSession(session) {
-  const meta = (session && (session.header || session.meta)) || {}
-  return meta.origin === 'subagent' || meta.parentSession !== undefined || meta.delegationDepth !== undefined
 }
 
 function titleOf(snapshot) {
@@ -331,7 +325,7 @@ async function readJsonBody(req, maxBytes = 256 * 1024) {
 /** 处理 assistant/message：命中末尾标记时把当前会话标题改为 TODO 前缀。 */
 export async function onAssistantMessage(ctx, config, session, event) {
   try {
-    if (!event || event.type !== 'assistant/message' || isSubagentSession(session)) return false
+    if (!event || event.type !== 'assistant/message' || isSubagentMeta((session && (session.header || session.meta)) || {})) return false
     if (!hasUserActionMarker(assistantText(event.data && event.data.message))) return false
     const sessionTitle = ctx.get('sessionTitle')
     if (!sessionTitle || typeof sessionTitle.get !== 'function' || typeof sessionTitle.rename !== 'function') return false
@@ -467,7 +461,7 @@ export function apply(ctx, config) {
       name: 'dsh-workbench-user-action',
       order: 10,
       interpolate: false,
-      text: () => '仅当这一回合结束时用户必须执行下一步操作、确认或运行命令，才在最后一条助手消息末尾另起一行输出隐藏标记 <!-- dsh:user-action -->；其他情况禁止输出。禁止在正文、代码块、引用或说明中提及或引用该标记。',
+      text: () => `仅当这一回合结束时用户必须执行下一步操作、确认或运行命令，才在最后一条助手消息末尾另起一行输出隐藏标记（下面引号内为两个 U+2063 INVISIBLE SEPARATOR 不可见字符，直接复制，不要改成可见文字）：“${USER_ACTION_MARKER}”；其他情况禁止输出。禁止输出 HTML 注释，禁止在正文、代码块、引用或说明中提及、引用或解释该标记。`,
     }), 'dsh-workbench: user action prompt')
   }
 
