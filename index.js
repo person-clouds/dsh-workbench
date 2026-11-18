@@ -20,7 +20,7 @@ import { loadTickets } from './lib/tickets.js'
 import { retentionFile, retentionSnapshot, runCleanup } from './lib/retention.js'
 import { sessionsPage, workspaceRepos, workspacesOverview } from './lib/workspaces.js'
 import { createTitleCache } from './lib/title-cache.js'
-import { hasUserActionMarker, withTodoPrefix } from './lib/todo.js'
+import { hasTodoPrefix, hasUserActionMarker, withTodoPrefix } from './lib/todo.js'
 
 export const name = 'dsh-workbench'
 /** webServer 提供路由，connection 提供 Host / Origin 校验与浏览器鉴权。 */
@@ -328,6 +328,39 @@ async function readJsonBody(req, maxBytes = 256 * 1024) {
   return JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')
 }
 
+/** 处理 assistant/message：命中末尾标记时把当前会话标题改为 TODO 前缀。 */
+export async function onAssistantMessage(ctx, config, session, event) {
+  try {
+    if (!event || event.type !== 'assistant/message' || isSubagentSession(session)) return false
+    if (!hasUserActionMarker(assistantText(event.data && event.data.message))) return false
+    const sessionTitle = ctx.get('sessionTitle')
+    if (!sessionTitle || typeof sessionTitle.get !== 'function' || typeof sessionTitle.rename !== 'function') return false
+    const current = titleOf(sessionTitle.get(session))
+    if (!current) return false
+    const next = withTodoPrefix(current)
+    if (next === current) return false
+    await sessionTitle.rename(session, next)
+    await titleCacheOf(ctx, config).put([{ id: String(session.id), title: next, kind: 'session', cwd: String(session.header && session.header.cwd || '') }])
+    return true
+  } catch (error) {
+    ctx.logger.warn('dsh-workbench: 更新 TODO 标题失败 %s', error)
+    return false
+  }
+}
+
+/** 只读查询会话当前标题，供客户端 `/ok` 做命令前校验。 */
+export function todoStateOf(ctx, sessionId) {
+  const id = String(sessionId || '').trim()
+  if (!id) return { status: 400, body: { error: '缺少 sessionId' } }
+  const sessions = ctx.get('sessions')
+  const session = sessions && typeof sessions.get === 'function' ? sessions.get(id) : undefined
+  if (!session) return { status: 404, body: { error: '会话不存在或未加载', sessionId: id } }
+  const sessionTitle = ctx.get('sessionTitle')
+  if (!sessionTitle || typeof sessionTitle.get !== 'function') return { status: 503, body: { error: 'sessionTitle 不可用' } }
+  const title = titleOf(sessionTitle.get(session))
+  return { status: 200, body: { ok: true, sessionId: id, title, hasTodo: hasTodoPrefix(title) } }
+}
+
 /** 注册 `/dsh-workbench/api` 与 `/dsh-workbench/api/sa`。 */
 function serveRoute(ctx, config) {
   const rejection = req => (ctx.connection.requestRejection ? ctx.connection.requestRejection({ headers: req.headers }) : undefined)
@@ -404,6 +437,10 @@ function serveRoute(ctx, config) {
       return
     }
     try {
+      if ((url.searchParams.get('action') || '') === 'todoState') {
+        const state = todoStateOf(ctx, url.searchParams.get('sessionId'))
+        return json(res, state.status, state.body)
+      }
       const view = url.searchParams.get('view') || ''
       const value = view
         ? await cachedView(ctx, config, url.searchParams, ctx.get('node:sqlite')?.DatabaseSync)
@@ -436,20 +473,7 @@ export function apply(ctx, config) {
 
   const sessionTitle = ctx.get('sessionTitle')
   if (sessionTitle && typeof sessionTitle.get === 'function' && typeof sessionTitle.rename === 'function') {
-    ctx.on('session/event', async (session, event) => {
-      try {
-        if (!event || event.type !== 'assistant/message' || isSubagentSession(session)) return
-        if (!hasUserActionMarker(assistantText(event.data && event.data.message))) return
-        const current = titleOf(sessionTitle.get(session))
-        if (!current) return
-        const next = withTodoPrefix(current)
-        if (next === current) return
-        await sessionTitle.rename(session, next)
-        await titleCacheOf(ctx, config).put([{ id: String(session.id), title: next, kind: 'session', cwd: String(session.header && session.header.cwd || '') }])
-      } catch (error) {
-        ctx.logger.warn('dsh-workbench: 更新 TODO 标题失败 %s', error)
-      }
-    })
+    ctx.on('session/event', (session, event) => onAssistantMessage(ctx, config, session, event))
   }
 
   const minutes = Number(config.fetchMinutes) || 0

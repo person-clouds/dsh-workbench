@@ -1,6 +1,11 @@
+---
+audience: human
+status: current
+implementation_status: done
+---
+
 # 计划：TODO 会话标记与 `/ok` 完成归档
 
-- 状态：已实施（2026-11-17）
 - 日期：2026-11-17
 - 决策：仅有用户下一步动作时由 Agent 输出隐藏标记；`/ok` 手动清除并异步归档；飞书 `/ok` 结束 Ticket、收尾并归档 worker 与评估会话
 - 前置：用户已确认命令为小写 `/ok`；群聊与私聊都接受；标记接受隐藏 HTML 注释

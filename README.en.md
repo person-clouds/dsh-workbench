@@ -155,3 +155,4 @@ task/dsh-workbench/
 
 - When a user-visible session needs the user's next action, a hidden marker turns its title into `TODO: <title>`; subagent sessions are excluded.
 - Sending `/ok` in the composer strips the prefix and archives the session asynchronously about 1.5 seconds after the command result, without sending a message or starting a model turn.
+- Read-only helper: `GET /dsh-workbench/api?action=todoState&sessionId=<id>` returns the current `title` and `hasTodo`; an unknown session returns 404.
