@@ -1,3 +1,8 @@
+---
+audience: ai
+status: current
+---
+
 # AGENTS.md
 
 > 本仓是独立的 DSH Web 插件仓库「DSH 工作台」。跨仓规则仍以 [`/home/zh/www/AGENTS.md`](../AGENTS.md) 为准；本文件只补充本仓规则。
