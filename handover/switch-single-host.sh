@@ -13,7 +13,7 @@
 set -euo pipefail
 
 REPO=/home/zh/www/personalCloud
-WORKBENCH="$REPO/task/dsh-workbench"
+WORKBENCH="$REPO/dsh-workbench"
 SA_REPO=/home/zh/src/dsh-superagent
 DSH_HOME="${DSH_HOME:-$HOME/.dsh}"
 PROFILE="$DSH_HOME/profiles/web"

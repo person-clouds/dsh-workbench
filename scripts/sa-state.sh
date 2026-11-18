@@ -3,7 +3,7 @@
 #
 # 背景（2026-11-15）：superagent 作为插件并入 dsh-web 的 web profile，不再有
 # 独立的 dsh-superagent.service 与 3082 监听。运行态事实来源变成 dsh-web 上的
-# GET /orchestrator/api/state（需要登录 cookie），见 task/dsh-workbench/STATUS.md。
+# GET /orchestrator/api/state（需要登录 cookie），见 dsh-workbench/STATUS.md。
 #
 # 用法：
 #   sa-state.sh                  # 打印 /orchestrator/api/state 原始 JSON

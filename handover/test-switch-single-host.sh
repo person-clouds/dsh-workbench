@@ -4,7 +4,7 @@
 set -euo pipefail
 
 REPO=/home/zh/www/personalCloud
-TARGET="$REPO/task/dsh-workbench/handover/switch-single-host.sh"
+TARGET="$REPO/dsh-workbench/handover/switch-single-host.sh"
 ROOT=$(mktemp -d /tmp/dsh-switch-test.XXXXXX)
 trap 'rm -rf "$ROOT"' EXIT
 

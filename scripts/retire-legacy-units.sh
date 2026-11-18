@@ -10,9 +10,9 @@
 #     按用户决定退役：stop + disable（不 mask，便于随时用 install.sh 装回）。
 #
 # 用法：
-#   bash task/dsh-workbench/scripts/retire-legacy-units.sh            # 预览（不改动）
-#   bash task/dsh-workbench/scripts/retire-legacy-units.sh --apply    # 执行
-#   bash task/dsh-workbench/scripts/retire-legacy-units.sh --apply dsh-superagent.service
+#   bash dsh-workbench/scripts/retire-legacy-units.sh            # 预览（不改动）
+#   bash dsh-workbench/scripts/retire-legacy-units.sh --apply    # 执行
+#   bash dsh-workbench/scripts/retire-legacy-units.sh --apply dsh-superagent.service
 #
 # tailnet 8448 → 8099 的旧映射已关闭（2026-11-15 执行）：
 #   tailscale serve --https=8448 off

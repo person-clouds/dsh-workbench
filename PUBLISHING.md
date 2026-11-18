@@ -7,7 +7,7 @@
 ## 一、构建并验证安装包
 
 ```bash
-cd /home/zh/www/personalCloud/task/dsh-workbench
+cd /home/zh/www/dsh-workbench
 npm_config_cache=/tmp/npm-cache npm pack --pack-destination release
 # 产物：release/dsh-workbench-0.2.0.tgz
 ```

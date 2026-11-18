@@ -3,7 +3,7 @@
 - 更新时间：2026-11-18（TODO 标记改为不可见字符并修复主会话误判）
 - 一句话：DSH 单 Host 下的统一工作台。面板覆盖工作区、仓库、文档、工单和 SA 控制；
   SA 控制直接切到 `dsh-superagent` 原生 main 面板，60 天保留与清理仍有 dry-run 和逐项安全检查。
-- 位置：`task/dsh-workbench/`；包名 `dsh-workbench@0.2.1`。
+- 位置：`dsh-workbench/`；包名 `dsh-workbench@0.2.1`。
 - 计划：[`PLAN-dsh-workbench.md`](PLAN-dsh-workbench.md)、[`PLAN-sa-ui-migration.md`](PLAN-sa-ui-migration.md)。
 
 ## 2026-11-18 最新：TODO 标记可见性与主会话判定修复

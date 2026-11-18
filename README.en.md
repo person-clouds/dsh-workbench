@@ -1,3 +1,8 @@
+---
+audience: shared
+status: current
+---
+
 [中文](README.md) | [English](README.en.md)
 
 # DSH Workbench (dsh-workbench)
@@ -57,10 +62,10 @@ Sidebar icon (id `dsh-workbench`, label “DSH 工作台”) → `main` slot:
 
 ```bash
 # Local development directory
-cd /home/zh/www/personalCloud/task/dsh-workbench
+cd /home/zh/www/dsh-workbench
 
 # Through the DSH plugin manager, or:
-dsh plugin --profile web add link:/home/zh/www/personalCloud/task/dsh-workbench
+dsh plugin --profile web add link:/home/zh/www/dsh-workbench
 ```
 
 Published-package install:
@@ -116,7 +121,7 @@ Besides explicit `repos`, the repo list automatically includes the SA delivery r
 ## Directory layout
 
 ```text
-task/dsh-workbench/
+dsh-workbench/
 ├── package.json          # bundle manifest: dsh.bundle.patch + dsh.client (web, immediately)
 ├── cordis.patch.yml      # insert row dsh-workbench
 ├── index.js              # Host: routes, snapshots, SA proxy, background fetch, retention loop

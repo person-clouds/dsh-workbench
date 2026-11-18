@@ -5,7 +5,7 @@
 #   交给 systemd user timer / SSH 等独立进程执行。
 #
 # 用法：
-#   bash task/dsh-workbench/scripts/restart-web-and-verify.sh
+#   bash dsh-workbench/scripts/restart-web-and-verify.sh
 # 验证日志默认写到 /tmp/dsh-workbench-restart-verify.log。
 set -uo pipefail
 

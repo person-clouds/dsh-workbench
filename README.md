@@ -1,3 +1,8 @@
+---
+audience: shared
+status: current
+---
+
 [中文](README.md) | [English](README.en.md)
 
 # DSH 工作台（dsh-workbench）
@@ -57,10 +62,10 @@
 
 ```bash
 # 本机开发目录
-cd /home/zh/www/personalCloud/task/dsh-workbench
+cd /home/zh/www/dsh-workbench
 
 # 通过 DSH 插件管理器安装，或：
-dsh plugin --profile web add link:/home/zh/www/personalCloud/task/dsh-workbench
+dsh plugin --profile web add link:/home/zh/www/dsh-workbench
 ```
 
 发布包安装：
@@ -125,7 +130,7 @@ dsh plugin --profile web add dsh-workbench
 ## 目录结构
 
 ```text
-task/dsh-workbench/
+dsh-workbench/
 ├── package.json          # bundle 清单：dsh.bundle.patch + dsh.client（web，immediately）
 ├── cordis.patch.yml      # 插入行 dsh-workbench
 ├── index.js              # Host：路由、快照、SA 代理、后台 fetch、保留策略循环

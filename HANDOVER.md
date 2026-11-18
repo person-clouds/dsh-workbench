@@ -11,7 +11,7 @@
 > **现状（2026-11-15）**：切换已完成。`dsh-superagent.service` 已 `disable`（单元文件保留），
 > 3082 无监听；SA 运行态由 [`scripts/sa-state.sh`](scripts/sa-state.sh) 统一读取，
 > `./cloudctl sa status` 与 health-watch 都用它。若发现旧单元又被拉起，跑
-> `bash task/dsh-workbench/scripts/retire-legacy-units.sh --apply` 收尾（幂等）。
+> `bash dsh-workbench/scripts/retire-legacy-units.sh --apply` 收尾（幂等）。
 
 ## 0. 备份
 
@@ -37,7 +37,7 @@ ss -ltnp 2>/dev/null | grep -E ':3080|:3082|:8443' > "$B/ports-before.txt" || tr
 
 ## 1. 应用 dsh-superagent 补丁
 
-补丁：`task/dsh-workbench/handover/dsh-superagent-single-host.patch`。它基于
+补丁：`dsh-workbench/handover/dsh-superagent-single-host.patch`。它基于
 `dsh-superagent` `d2a3b60`，内容包括：
 
 - worker 环境改为显式 `env`，不再改 `process.env`；新增
@@ -59,25 +59,25 @@ ss -ltnp 2>/dev/null | grep -E ':3080|:3082|:8443' > "$B/ports-before.txt" || tr
 cd /home/zh/src/dsh-superagent
 git status --short   # 注意：package.json、pnpm-lock.yaml、scripts/dsh-superagent
                      # 及 cordis.patch.yml.bak.* 是既有的并行改动，不要提交
-git apply --check /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-superagent-single-host.patch
-git apply       /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-superagent-single-host.patch
+git apply --check /home/zh/www/dsh-workbench/handover/dsh-superagent-single-host.patch
+git apply       /home/zh/www/dsh-workbench/handover/dsh-superagent-single-host.patch
 
 # 2026-11-15 追加：修复 Host 行激活期间 await runtime.ready 造成的 preset 死锁。
-git apply --check /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-superagent-defer-ready.patch
-git apply       /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-superagent-defer-ready.patch
+git apply --check /home/zh/www/dsh-workbench/handover/dsh-superagent-defer-ready.patch
+git apply       /home/zh/www/dsh-workbench/handover/dsh-superagent-defer-ready.patch
 
 # 2026-11-15 追加：修复 Feishu 事件消费的 health 状态竞争。
 # stderr 的 [event] ready 与 stdout 的畸形事件行来自两个独立管道；
 # ready 晚到时会覆盖已报告的 JSON 错误，导致测试偶发失败。保持本次进程的首个错误不降级。
-git apply --check /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-superagent-feishu-health-race.patch
-git apply       /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-superagent-feishu-health-race.patch
+git apply --check /home/zh/www/dsh-workbench/handover/dsh-superagent-feishu-health-race.patch
+git apply       /home/zh/www/dsh-workbench/handover/dsh-superagent-feishu-health-race.patch
 
 # 2026-11-15 追加：移除 dsh-superagent 旧侧边栏入口，避免重复。
 # 只隐藏 sidebar.panellist，必须保留 main 面板；dsh-workbench「SA 控制」
 # 现在通过 ctx.layout.selectPanel("dsh-superagent") 打开这个原生 main 面板，
 # 所以它不再是“仍覆盖”的旧副本，而是唯一 SA 管理界面。
-git apply --check /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-superagent-hide-legacy-sidebar.patch
-git apply       /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-superagent-hide-legacy-sidebar.patch
+git apply --check /home/zh/www/dsh-workbench/handover/dsh-superagent-hide-legacy-sidebar.patch
+git apply       /home/zh/www/dsh-workbench/handover/dsh-superagent-hide-legacy-sidebar.patch
 
 # 补丁不新增依赖，但保险起见：
 pnpm install
@@ -101,7 +101,7 @@ grep -q 'runtime.ready.then' lib/index.js && echo 'deferred startup in lib'
 >
 > ```bash
 > cd /home/zh/src/dsh-superagent
-> git apply --check -R /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-superagent-single-host.patch \
+> git apply --check -R /home/zh/www/dsh-workbench/handover/dsh-superagent-single-host.patch \
 >   && echo 'SA 补丁已应用'
 > test -f lib/worker-shell-env.js && echo 'worker-shell-env 已构建'
 > ```
@@ -112,15 +112,15 @@ grep -q 'runtime.ready.then' lib/index.js && echo 'deferred startup in lib'
 
 ```bash
 cd /home/zh/www/personalCloud
-bash task/dsh-workbench/handover/switch-single-host.sh --self-test   # 必须输出「自检通过」
-bash task/dsh-workbench/handover/test-switch-single-host.sh          # 必须输出 PASS
-bash task/dsh-workbench/handover/switch-single-host.sh --dry-run     # 只检查文件与打印计划
-bash task/dsh-workbench/handover/switch-single-host.sh --apply
+bash dsh-workbench/handover/switch-single-host.sh --self-test   # 必须输出「自检通过」
+bash dsh-workbench/handover/test-switch-single-host.sh          # 必须输出 PASS
+bash dsh-workbench/handover/switch-single-host.sh --dry-run     # 只检查文件与打印计划
+bash dsh-workbench/handover/switch-single-host.sh --apply
 
 # 失败时保留新 Host/临时文件现场，不自动回滚（排障用）：
-bash task/dsh-workbench/handover/switch-single-host.sh --apply --keep
+bash dsh-workbench/handover/switch-single-host.sh --apply --keep
 # bash -x + 保留临时文件；trace 可能含登录 token：
-bash task/dsh-workbench/handover/switch-single-host.sh --apply --debug
+bash dsh-workbench/handover/switch-single-host.sh --apply --debug
 ```
 
 > 禁止跳过 `--self-test` 与 mock 回归直接 `--apply`。
@@ -187,13 +187,13 @@ systemctl --user start dsh-web.service
 
 ```bash
 # 1. 验证 SA 代理 + 执行保留清理 dry-run（只报告，不删除）
-bash task/dsh-workbench/handover/retention-dry-run.sh
+bash dsh-workbench/handover/retention-dry-run.sh
 
 # 2. 预览自动清理开关（默认不改文件）
-bash task/dsh-workbench/handover/enable-retention-auto-cleanup.sh
+bash dsh-workbench/handover/enable-retention-auto-cleanup.sh
 
 # 3. dry-run 和人工检查都通过后，才开启自动清理（自动备份并重启）
-bash task/dsh-workbench/handover/enable-retention-auto-cleanup.sh --apply
+bash dsh-workbench/handover/enable-retention-auto-cleanup.sh --apply
 
 # 4. 全链路可用性检查
 bash .dsh/skills/dsh-usability-check/scripts/check.sh
@@ -202,7 +202,7 @@ bash .dsh/skills/dsh-usability-check/scripts/check.sh
 - dry-run 结果：`~/.dsh/state/workbench/dry-run-<时间>.json`；
 - 审计记录：`~/.dsh/state/workbench/retention-audit.log`；
 - 自动清理配置备份：`~/.dsh/backups/dsh-workbench/retention-config-<时间>.yml`；
-- 离线回归：`bash task/dsh-workbench/handover/test-retention-scripts.sh`。
+- 离线回归：`bash dsh-workbench/handover/test-retention-scripts.sh`。
 
 启动后先验证 HTTP，日志只用于诊断（`ctx.logger.info` 不写 journal）：
 
@@ -239,7 +239,7 @@ plugins/??dsh-workbench/client.js&rev=...: loaded without registering
 ```
 
 按顺序检查：新标签页 `Ctrl+Shift+R`；DevTools 是否有 `Uncaught SyntaxError`；
-`task/dsh-workbench/client.js` 顶层是否只有 `window.__ModuleLoader__.load({...})`
+`dsh-workbench/client.js` 顶层是否只有 `window.__ModuleLoader__.load({...})`
 （`zh`/`en` 必须在 `factory` 内）；`web` profile 是否同时列了两个 workbench bundle。
 
 ## 3. 确认停用第二个 Host 与 3082
@@ -317,8 +317,8 @@ timeout 8 curl -sS --noproxy '*' -b "$JAR" -N "$BASE/plugins/events" | head -c 1
 `web/cordis.patch.yml` 和运行台账 `retention.json`，备份后重启 `dsh-web`：
 
 ```bash
-bash task/dsh-workbench/handover/enable-retention-auto-cleanup.sh
-bash task/dsh-workbench/handover/enable-retention-auto-cleanup.sh --apply
+bash dsh-workbench/handover/enable-retention-auto-cleanup.sh
+bash dsh-workbench/handover/enable-retention-auto-cleanup.sh --apply
 ```
 
 自动清理每 24 小时最多一次。只改 `cordis.patch.yml` 不够：台账已存在时，
@@ -363,7 +363,7 @@ systemctl --user start dsh-web.service
 
 # 回退 SA 源码补丁；不要 reset 其他并行改动
 cd /home/zh/src/dsh-superagent
-git apply -R /home/zh/www/personalCloud/task/dsh-workbench/handover/dsh-superagent-single-host.patch
+git apply -R /home/zh/www/dsh-workbench/handover/dsh-superagent-single-host.patch
 pnpm install
 pnpm build
 ```
@@ -373,7 +373,7 @@ pnpm build
 再启动 `dsh-web.service`；确认后记得再跑一次 `retire-legacy-units.sh --apply` 避免两个 Host 并存。SA 数据库若在
 切换中异常，先用备份目录中的 `orchestrator.sqlite*` 恢复再启动；不要直接删库。
 
-注意：`58a06a1` 已把 `task/superagent-workbench/` 改名为 `task/dsh-workbench/`。
+注意：`58a06a1` 已把 `task/superagent-workbench/` 改名为 `dsh-workbench/`。
 仅恢复 `web/package.json` 时，旧依赖
 `dsh-superagent-workbench -> task/superagent-workbench` 会悬空，旧面板不会出现。
 若要连旧面板一起回滚，先从旧提交导出目录再启动：
@@ -389,7 +389,7 @@ git archive 58a06a1^ task/superagent-workbench | tar -x -C .
 发布 npm 前先确认登录：
 
 ```bash
-cd /home/zh/www/personalCloud/task/dsh-workbench
+cd /home/zh/www/dsh-workbench
 npm whoami --registry=https://registry.npmjs.org
 npm_config_cache=/tmp/npm-cache npm pack --pack-destination release
 npm publish --registry=https://registry.npmjs.org --access public

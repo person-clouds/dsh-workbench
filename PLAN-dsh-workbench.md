@@ -267,7 +267,7 @@ retention:
 ### 8.3 改名清单
 
 ```text
-目录：task/superagent-workbench → task/dsh-workbench
+目录：task/superagent-workbench → dsh-workbench
 包名：dsh-superagent-workbench → dsh-workbench
 插件 id：dsh-workbench
 路由：/dsh-workbench/api
