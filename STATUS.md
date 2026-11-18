@@ -15,6 +15,7 @@
 - [x] 测试 `handover/test-workbench-index.mjs` 新增：延迟挂载、晚挂载监听仍改名、服务缺失告警去重、标题为空告警、旧 HTML 注释兼容、提示词约束与不含旧标记；原有矩阵保留。
 - [x] 校验：`node --check index.js client.js lib/todo.js`、`node --test handover/test-workbench-todo.mjs handover/test-workbench-index.mjs`、`test-workbench-lists.mjs`、`test-workbench-repos.mjs`、`test-retention-scripts.sh`、`npm pack --dry-run` 全部通过。
 - [ ] 待用户重启 `dsh-web.service` 并硬刷新后，在新会话确认真实改名、日志出现挂载 `info`，并回归 `/ok` 恢复与归档。
+- [x] 同日排查发现重启后日志出现 `skipping profile bundle "dsh-workbench"`：仓库从 `personalCloud/task/` 提升为独立仓后，web profile 的 `link:` 仍指向旧路径，导致本插件、`dsh-workflow-shortcuts`、`@fenghoer/dsh-context-guard` 三个 bundle 被跳过。已在宿主机 `~/.dsh/profiles/web/package.json` 改为新路径并重装，`import` 三个包均通过（备份 `package.json.bak-links-*`）。
 
 ## 2026-11-18 上一轮：TODO 标记可见性与主会话判定修复
 

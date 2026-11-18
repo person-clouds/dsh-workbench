@@ -167,7 +167,7 @@ fix(workbench): 等 sessionTitle 就绪后再挂载 TODO 标题监听
 ### 自动化
 
 ```bash
-cd /home/zh/www/personalCloud/task/dsh-workbench
+cd /home/zh/www/dsh-workbench
 node --check index.js
 node --check client.js
 node --check lib/todo.js
