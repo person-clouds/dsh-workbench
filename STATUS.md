@@ -1,12 +1,25 @@
 # STATUS — DSH 工作台
 
-- 更新时间：2026-11-18（TODO 标题监听改为等 sessionTitle 就绪后挂载）
+- 更新时间：2026-11-18（TODO 提示词跨 minimal 预设生效）
 - 一句话：DSH 单 Host 下的统一工作台。面板覆盖工作区、仓库、文档、工单和 SA 控制；
   SA 控制直接切到 `dsh-superagent` 原生 main 面板，60 天保留与清理仍有 dry-run 和逐项安全检查。
 - 位置：`dsh-workbench/`；包名 `dsh-workbench@0.2.1`。
 - 计划：[`PLAN-dsh-workbench.md`](PLAN-dsh-workbench.md)、[`PLAN-sa-ui-migration.md`](PLAN-sa-ui-migration.md)。
 
-## 2026-11-18 最新：TODO 标题监听时序修复
+## 2026-11-18 最新：TODO 提示词跨 minimal 预设生效
+
+- [x] 定位真实会话 `session-e5b0866f-...` 未加 TODO 的根因：该会话 `agentPreset: "minimal"`，minimal 的 persona 是 `complete: true`，按 `dsh-system-prompt` 语义会作为唯一 system prompt，普通 `systemPrompt.section()`（含 workbench 标记指令）全部被丢弃；会话日志里 `system/message` 只有 46 字的 persona 可证。
+- [x] `index.js` 将 workbench 标记指令从普通 section 改为 `required: true` 的 runtime context；required context 不受 `complete` persona 和 `includeRuntimeContext: false` 影响，因此 minimal 与完整预设都能收到标记指令。
+- [x] 更新 `handover/test-workbench-index.mjs`：断言注册的是 `context`、`required === true`，且不再注册普通 section；测试 11/11 通过。
+- [ ] 待重启 `dsh-web.service` 后，在 minimal 预设新会话确认模型输出末尾标记、标题变为 `TODO：...`。
+
+## 2026-11-18 最新：TODO 前缀兼容 /D、/G 标题
+
+- [x] `lib/todo.js` 与 `client.js` 的 TODO 前缀识别支持命令会话：`D: <摘要>` → `TODO D: <摘要>`，`G：<标题>` → `TODO G：<标题>`；普通标题仍为 `TODO：<原标题>`。
+- [x] 更新 `handover/test-workbench-todo.mjs`、`handover/test-workbench-index.mjs` 覆盖命令标题前缀与 `/ok` 去除前缀；README/README.en 同步。
+- [x] 校验：`node --check index.js client.js lib/todo.js`、`node --test handover/test-workbench-todo.mjs handover/test-workbench-index.mjs` 通过。
+
+## 2026-11-18 上一轮：TODO 标题监听时序修复
 
 - [x] 线上证据显示标题未改名的根因是监听器没挂载：`apply()` 里一次性 `ctx.get('sessionTitle')` 时服务尚未就绪，拿不到就永久跳过，且无日志。修复见 [`PLAN-todo-title-listener-fix.md`](PLAN-todo-title-listener-fix.md)。
 - [x] `index.js` 改为 `ctx.inject(['sessionTitle'], ...)` 延迟挂载 `session/event` 监听，挂载成功打 `info`「sessionTitle 就绪，TODO 标题监听已挂载」；`systemPrompt` section 同样改用 `ctx.inject`，避免同类时序隐患。

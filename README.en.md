@@ -158,6 +158,7 @@ dsh-workbench/
 
 ## TODO and `/ok`
 
-- When a user-visible session needs the user's next action, two invisible trailing `U+2063` markers turn its title into `TODO: <title>`; `delegationDepth === 0` main sessions are eligible, subagent sessions are excluded.
+- When a user-visible session needs the user's next action, two invisible trailing `U+2063` markers add a TODO prefix to its title; `delegationDepth === 0` main sessions are eligible, subagent sessions are excluded.
+- A normal title becomes `TODO：<title>`; `/D` titles `D: <summary>` become `TODO D: <summary>`, and `/G` titles `G：<title>` become `TODO G：<title>`.
 - Sending `/ok` in the composer strips the prefix and archives the session asynchronously about 1.5 seconds after the command result, without sending a message or starting a model turn.
 - Read-only helper: `GET /dsh-workbench/api?action=todoState&sessionId=<id>` returns the current `title` and `hasTodo`; an unknown session returns 404.

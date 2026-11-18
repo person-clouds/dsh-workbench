@@ -14,7 +14,7 @@ window.__ModuleLoader__.load({
     const React = require('react')
     const h = React.createElement
     const API = '/dsh-workbench/api'
-    const stripTodoPrefix = title => String(title ?? '').replace(/^TODO[：:]\s*/u, '')
+    const stripTodoPrefix = title => String(title ?? '').replace(/^TODO(?:[：:]\s*|\s+(?=[DG][：:]))/u, '')
     const ARCHIVE_DELAY_MS = 1500
     const PANEL_ID = 'dsh-workbench'
     const NS = 'dshWorkbench'

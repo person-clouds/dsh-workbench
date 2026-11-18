@@ -63,9 +63,12 @@ function applyFixture() {
 }
 
 /** systemPrompt service 晚到后注入回调用的子上下文。 */
-function promptChild(sections) {
+function promptChild(registrations) {
   return {
-    systemPrompt: { section: options => { sections.push(options); return () => {} } },
+    systemPrompt: {
+      section: options => { registrations.sections.push(options); return () => {} },
+      context: options => { registrations.contexts.push(options); return () => {} },
+    },
     effect: fn => fn(),
   }
 }
@@ -77,10 +80,12 @@ test('systemPrompt 与 sessionTitle 晚到时就绪后挂载监听与提示词',
   assert.ok(injections.has('systemPrompt'))
   assert.ok(injections.has('sessionTitle'))
 
-  const sections = []
-  injections.get('systemPrompt')(promptChild(sections))
-  assert.equal(sections.length, 1)
-  assert.equal(sections[0].name, 'dsh-workbench-user-action')
+  const registrations = { sections: [], contexts: [] }
+  injections.get('systemPrompt')(promptChild(registrations))
+  assert.equal(registrations.sections.length, 0)
+  assert.equal(registrations.contexts.length, 1)
+  assert.equal(registrations.contexts[0].name, 'dsh-workbench-user-action')
+  assert.equal(registrations.contexts[0].required, true)
 
   const events = []
   const titleCtx = {
@@ -163,9 +168,9 @@ test('旧 HTML 注释标记仍能触发标题改名', async () => {
 test('提示词包含压制旧标记的约束且不复述完整旧标记', () => {
   const { ctx, injections } = applyFixture()
   apply(ctx, { repoDir: '/nonexistent/repo', fetchMinutes: 0, retentionCheckMinutes: 60 })
-  const sections = []
-  injections.get('systemPrompt')(promptChild(sections))
-  const text = sections[0].text()
+  const registrations = { sections: [], contexts: [] }
+  injections.get('systemPrompt')(promptChild(registrations))
+  const text = registrations.contexts[0].text()
   assert.ok(text.includes('历史消息'))
   assert.ok(text.includes('禁止模仿'))
   assert.ok(text.includes('只使用本节给出的不可见字符'))
@@ -217,6 +222,22 @@ test('主会话 delegationDepth 0 可触发，subagent 不触发', async () => {
     const origin = fixture({ id: 'sub-origin', origin: 'subagent' })
     assert.equal(await onAssistantMessage(origin.ctx, { titleFile: join(dir, 'titles.json') }, origin.session, message(`需要确认\n${USER_ACTION_MARKER}`)), false)
     assert.deepEqual(origin.calls, [])
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+
+test('D/G 命令会话的 TODO 前缀保留命令标识', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'dsh-workbench-index-'))
+  try {
+    const d = fixture({ id: 'd-session', title: 'D: 实现登录' })
+    assert.equal(await onAssistantMessage(d.ctx, { titleFile: join(dir, 'titles.json') }, d.session, message(`请确认\n${USER_ACTION_MARKER}`)), true)
+    assert.deepEqual(d.calls, ['TODO D: 实现登录'])
+
+    const g = fixture({ id: 'g-session', title: 'G：修复登录' })
+    assert.equal(await onAssistantMessage(g.ctx, { titleFile: join(dir, 'titles.json') }, g.session, message(`请确认\n${USER_ACTION_MARKER}`)), true)
+    assert.deepEqual(g.calls, ['TODO G：修复登录'])
   } finally {
     await rm(dir, { recursive: true, force: true })
   }

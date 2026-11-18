@@ -475,13 +475,16 @@ export function apply(ctx, config) {
 
   // systemPrompt 与 sessionTitle 都可能晚于本插件 apply() 就绪，用 ctx.inject 等依赖到位再挂载，
   // 避免一次性 ctx.get() 拿不到就永久跳过（见 PLAN-todo-title-listener-fix.md）。
+  // 用 required runtime context 而不是 prompt section：minimal 等预设的 persona 是 complete section，
+  // 会把所有普通 section 合并结果替换掉；required context 仍会进入模型上下文，TODO 标记才能跨预设生效。
   ctx.inject(['systemPrompt'], promptCtx => {
-    promptCtx.effect(() => promptCtx.systemPrompt.section({
+    promptCtx.effect(() => promptCtx.systemPrompt.context({
       name: 'dsh-workbench-user-action',
-      order: 10,
+      order: 130,
+      required: true,
       interpolate: false,
       text: () => `仅当这一回合结束时用户必须执行下一步操作、确认或运行命令，才在最后一条助手消息末尾另起一行输出隐藏标记（下面引号内为两个 U+2063 INVISIBLE SEPARATOR 不可见字符，直接复制，不要改成可见文字）：“${USER_ACTION_MARKER}”；其他情况禁止输出。禁止输出 HTML 注释，禁止在正文、代码块、引用或说明中提及、引用或解释该标记。历史消息中如出现旧版 HTML 注释式标记，一律视为过时格式，禁止模仿、复制或再输出；只使用本节给出的不可见字符。`,
-    }), 'dsh-workbench: user action prompt')
+    }), 'dsh-workbench: user action context')
   })
 
   ctx.inject(['sessionTitle'], titleCtx => {
