@@ -6,6 +6,13 @@
 - 位置：`dsh-workbench/`；包名 `dsh-workbench@0.2.1`。
 - 计划：[`PLAN-dsh-workbench.md`](PLAN-dsh-workbench.md)、[`PLAN-sa-ui-migration.md`](PLAN-sa-ui-migration.md)。
 
+## 2026-11-18 最新：`/ok` 只清除 TODO，不归档会话
+
+- [x] 按 [`PLAN-ok-no-auto-archive-prompts.md`](/home/zh/www/personalCloud/task/dsh-workflow-shortcuts/PLAN-ok-no-auto-archive-prompts.md) 调整：Web 输入框 `/ok` 只移除标题 TODO 前缀，不再延迟调用归档接口；手动归档入口不变。
+- [x] `/ok` 命令结果改为「已清除 TODO，不归档会话」/「当前没有 TODO 标记，不归档会话」，中英文词典同步。
+- [x] 新增源码级回归断言，确认 `/ok` 处理路径不包含 `ARCHIVE_DELAY_MS` 与 `/api/archive`。
+- [x] 校验：`node --check client.js`；`node --test handover/test-workbench-*.mjs`。
+
 ## 2026-11-18 最新：TODO 提示词跨 minimal 预设生效
 
 - [x] 定位真实会话 `session-e5b0866f-...` 未加 TODO 的根因：该会话 `agentPreset: "minimal"`，minimal 的 persona 是 `complete: true`，按 `dsh-system-prompt` 语义会作为唯一 system prompt，普通 `systemPrompt.section()`（含 workbench 标记指令）全部被丢弃；会话日志里 `system/message` 只有 46 字的 persona 可证。

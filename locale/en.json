@@ -257,8 +257,8 @@
   "lineNo": "Line",
   "repoPath": "Path",
   "refreshedAt": "Updated {time}",
-  "okDescription": "Clear this session's TODO marker and archive it",
-  "okCleared": "TODO cleared; archiving this session shortly",
-  "okNoTodo": "No TODO marker; archiving this session shortly",
+  "okDescription": "Clear this session's TODO marker without archiving it",
+  "okCleared": "TODO cleared; this session was not archived",
+  "okNoTodo": "No TODO marker; this session was not archived",
   "okFailed": "Failed: "
 }

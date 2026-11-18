@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
@@ -241,6 +241,14 @@ test('D/G 命令会话的 TODO 前缀保留命令标识', async () => {
   } finally {
     await rm(dir, { recursive: true, force: true })
   }
+})
+
+test('/ok 只清除 TODO 前缀，不归档会话', async () => {
+  const source = await readFile(new URL('../client.js', import.meta.url), 'utf8')
+  assert.ok(source.includes("text: t(hadTodo ? 'okCleared' : 'okNoTodo')"))
+  assert.ok(source.includes('不归档会话'))
+  assert.ok(!source.includes('ARCHIVE_DELAY_MS'))
+  assert.ok(!source.includes('/api/archive'))
 })
 
 test('todoState 返回当前标题与 TODO 状态', () => {

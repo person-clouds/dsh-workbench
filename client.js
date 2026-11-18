@@ -15,7 +15,6 @@ window.__ModuleLoader__.load({
     const h = React.createElement
     const API = '/dsh-workbench/api'
     const stripTodoPrefix = title => String(title ?? '').replace(/^TODO(?:[：:]\s*|\s+(?=[DG][：:]))/u, '')
-    const ARCHIVE_DELAY_MS = 1500
     const PANEL_ID = 'dsh-workbench'
     const NS = 'dshWorkbench'
     const REFRESH_MS = 20_000
@@ -282,9 +281,9 @@ window.__ModuleLoader__.load({
       "lineNo": "行号",
       "repoPath": "路径",
       "refreshedAt": "更新于 {time}",
-      "okDescription": "清除当前会话的 TODO 标记并归档",
-      "okCleared": "已清除 TODO，稍后自动归档会话",
-      "okNoTodo": "当前会话没有 TODO 标记，稍后自动归档",
+      "okDescription": "清除当前会话的 TODO 标记，不归档会话",
+      "okCleared": "已清除 TODO，不归档会话",
+      "okNoTodo": "当前没有 TODO 标记，不归档会话",
       "okFailed": "操作失败："
     }
     const en = {
@@ -547,9 +546,9 @@ window.__ModuleLoader__.load({
       "lineNo": "Line",
       "repoPath": "Path",
       "refreshedAt": "Updated {time}",
-      "okDescription": "Clear this session's TODO marker and archive it",
-      "okCleared": "TODO cleared; archiving this session shortly",
-      "okNoTodo": "No TODO marker; archiving this session shortly",
+      "okDescription": "Clear this session's TODO marker without archiving it",
+      "okCleared": "TODO cleared; this session was not archived",
+      "okNoTodo": "No TODO marker; this session was not archived",
       "okFailed": "Failed: "
     }
 
@@ -2316,14 +2315,6 @@ window.__ModuleLoader__.load({
         const sessions = ctx.get('sessions')
         const inputTriggers = ctx.get('inputTriggers')
         if (sessions && inputTriggers) {
-          const archive = async sessionId => {
-            const response = await fetch(`${API}/archive`, {
-              method: 'POST', credentials: 'same-origin',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({ sessionId }),
-            })
-            if (!response.ok) throw new Error(`archive HTTP ${response.status}`)
-          }
           const claim = session => ({
             name: 'ok',
             token: '/ok ',
@@ -2340,7 +2331,6 @@ window.__ModuleLoader__.load({
               } catch (error) {
                 return { kind: 'error', text: `${t('okFailed')}${error && error.message ? error.message : error}` }
               }
-              setTimeout(() => { archive(session.sessionId).catch(error => console.warn('dsh-workbench: 归档会话失败', error)) }, ARCHIVE_DELAY_MS)
               return { kind: 'success', text: t(hadTodo ? 'okCleared' : 'okNoTodo') }
             },
           })

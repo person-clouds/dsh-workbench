@@ -257,8 +257,8 @@
   "lineNo": "行号",
   "repoPath": "路径",
   "refreshedAt": "更新于 {time}",
-  "okDescription": "清除当前会话的 TODO 标记并归档",
-  "okCleared": "已清除 TODO，稍后自动归档会话",
-  "okNoTodo": "当前会话没有 TODO 标记，稍后自动归档",
+  "okDescription": "清除当前会话的 TODO 标记，不归档会话",
+  "okCleared": "已清除 TODO，不归档会话",
+  "okNoTodo": "当前没有 TODO 标记，不归档会话",
   "okFailed": "操作失败："
 }
