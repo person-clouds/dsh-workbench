@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 
-import { apply, onAssistantMessage, todoStateOf } from '../index.js'
+import { apply, onAssistantMessage, scheduleAssistantMessage, todoStateOf } from '../index.js'
 import { USER_ACTION_MARKER } from '../lib/todo.js'
 
 function fixture(options = {}) {
@@ -90,11 +90,12 @@ test('systemPrompt 与 sessionTitle 晚到时就绪后挂载监听与提示词',
   const events = []
   const titleCtx = {
     logger: { info: message => infos.push(message) },
-    on: (event, handler) => events.push({ event, handler }),
+    on: (event, handler, options) => events.push({ event, handler, options }),
   }
   injections.get('sessionTitle')(titleCtx)
   assert.equal(events.length, 1)
   assert.equal(events[0].event, 'session/event')
+  assert.deepEqual(events[0].options, { global: true })
   assert.ok(infos.some(message => String(message).includes('TODO 标题监听已挂载')))
 })
 
@@ -120,6 +121,29 @@ test('晚挂载的 session/event 监听仍能改名标题', async () => {
     assert.deepEqual(calls, ['TODO：晚挂载'])
     // 监听是 fire-and-forget，等标题缓存落盘后再清理临时目录。
     await new Promise(resolve => setTimeout(resolve, 100))
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('监听回调在 append 发布期间只排队，发布结束后才改名', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'dsh-workbench-index-'))
+  try {
+    const calls = []
+    let current = '修复登录'
+    const session = { id: 'deferred', header: { cwd: '/tmp/ws', delegationDepth: 0 }, meta: {} }
+    const ctx = {
+      logger: { warn() {} },
+      get: name => name === 'sessionTitle' ? {
+        get: value => ({ title: value === session ? current : '' }),
+        rename: async (value, title) => { calls.push(title); current = title },
+      } : undefined,
+    }
+    scheduleAssistantMessage(ctx, { titleFile: join(dir, 'titles.json') }, session, message(`请确认\n${USER_ACTION_MARKER}`))
+    // 模拟 Session.commit()：回调同步阶段仍处于 append 发布中，此时不能改名。
+    assert.deepEqual(calls, [])
+    await new Promise(resolve => setImmediate(resolve))
+    assert.deepEqual(calls, ['TODO：修复登录'])
   } finally {
     await rm(dir, { recursive: true, force: true })
   }

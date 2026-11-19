@@ -360,6 +360,18 @@ export async function onAssistantMessage(ctx, config, session, event) {
   }
 }
 
+/**
+ * 事件监听器专用：把改名推迟到当前 append 发布结束之后。
+ *
+ * `Session.commit()` 在触发 `session/event` 期间持有 `entry.appending = true`；
+ * 若监听器同步调用 `sessionTitle.rename()`，后者内部再 `session.append()` 会被
+ * 会话层以“cannot reenter while another append is being published”拒绝。
+ * 使用微任务等到 commit 的 finally 释放该标记后再执行。
+ */
+export function scheduleAssistantMessage(ctx, config, session, event) {
+  queueMicrotask(() => { void onAssistantMessage(ctx, config, session, event) })
+}
+
 /** 只读查询会话当前标题，供客户端 `/ok` 做命令前校验。 */
 export function todoStateOf(ctx, sessionId) {
   const id = String(sessionId || '').trim()
@@ -490,9 +502,11 @@ export function apply(ctx, config) {
   ctx.inject(['sessionTitle'], titleCtx => {
     titleCtx.logger.info('dsh-workbench: sessionTitle 就绪，TODO 标题监听已挂载')
     // 监听注册在 titleCtx 上，随该 fiber 释放而释放，热重载不会重复监听。
+    // global: true 不依赖会话作用域过滤；改名走微任务，避开 Session.commit()
+    // 发布期间的 append 重入保护（见 scheduleAssistantMessage）。
     titleCtx.on('session/event', (session, event) => {
-      void onAssistantMessage(titleCtx, config, session, event)
-    })
+      scheduleAssistantMessage(titleCtx, config, session, event)
+    }, { global: true })
   })
 
   const minutes = Number(config.fetchMinutes) || 0

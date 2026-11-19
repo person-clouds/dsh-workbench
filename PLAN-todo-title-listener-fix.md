@@ -197,7 +197,7 @@ systemctl --user restart dsh-web.service
    应看到 `sessionTitle 就绪，TODO 标题监听已挂载`；若触发了失败分支，应有对应 warn 和会话 id。
 
 5. 检查目标会话日志出现新的 `session/title` 事件且标题带 `TODO：`。
-6. 对已经出现 TODO 的会话发送 `/ok`，确认标题恢复且会话异步归档（回归）。
+6. 对已经出现 TODO 的会话发送 `/ok`，确认标题恢复且**不会**归档会话（回归）。
 7. 目标会话 `session-f73fa9a7...` 中历史可见注释无法自动清除；应在新会话验证“无可见标记”。如需该会话标题立即正确，可等下一轮触发或人工改名，不在本轮做历史回填。
 
 ### 完成标准
@@ -206,10 +206,12 @@ systemctl --user restart dsh-web.service
 - [ ] 服务缺失/标题为空告警单测通过。
 - [ ] 旧 HTML 注释标记仍能触发标题改名。
 - [ ] 新会话标题出现 `TODO：`，且界面无可见标记。
-- [ ] `/ok` 清理与归档回归通过。
+- [ ] `/ok` 只清理 TODO、不归档回归通过。
 - [ ] `STATUS.md` 记录验证结果。
 
 ## 七、实施进展
+
+- 2026-11-19：定位到监听器之外的第二层根因——`Session.commit()` 在发布 `session/event` 时持有 `entry.appending = true`，监听器内同步调用 `sessionTitle.rename()` 会触发 `session.append()` 重入保护并抛错。已新增 `scheduleAssistantMessage()` 用微任务推迟到发布结束后执行，监听器加 `{ global: true }`；补充「发布期间只排队」回归测试，并在活体 Host 中模拟 `entry.appending` 验证通过。
 
 - 2026-11-18：第三节代码与测试已完成并本地验证通过（`node --check`、四个 `handover` 测试、`npm pack --dry-run`）。
   监听改由 `ctx.inject(['sessionTitle'], ...)` 挂载，`systemPrompt` 同步改为 `ctx.inject`；诊断告警按「会话 + 原因」去重。

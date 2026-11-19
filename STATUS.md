@@ -1,10 +1,18 @@
 # STATUS — DSH 工作台
 
-- 更新时间：2026-11-18（TODO 提示词跨 minimal 预设生效）
+- 更新时间：2026-11-19（TODO 标题改名 append 重入修复）
 - 一句话：DSH 单 Host 下的统一工作台。面板覆盖工作区、仓库、文档、工单和 SA 控制；
   SA 控制直接切到 `dsh-superagent` 原生 main 面板，60 天保留与清理仍有 dry-run 和逐项安全检查。
 - 位置：`dsh-workbench/`；包名 `dsh-workbench@0.2.1`。
 - 计划：[`PLAN-dsh-workbench.md`](PLAN-dsh-workbench.md)、[`PLAN-sa-ui-migration.md`](PLAN-sa-ui-migration.md)。
+
+## 2026-11-19 最新：TODO 标题改名 append 重入修复
+
+- [x] 定位真实会话 `session-8f119a3c-...` 标题长期不变的直接根因：监听器确实被调用，但 `Session.commit()` 发布 `assistant/message` 期间 `entry.appending === true`；监听器同步调用 `sessionTitle.rename()` → `session.append("session/title")` 被会话层以 `session append cannot reenter while another append is being published` 拒绝，异常被 catch 后只留下不可见日志。
+- [x] `index.js` 新增 `scheduleAssistantMessage()`：事件监听只把改名排入微任务，等 `commit()` 的 `finally` 释放 `appending` 后再执行；监听器同时加 `{ global: true }`，不依赖会话作用域过滤。
+- [x] 新增回归测试：监听回调在 append 发布期间只排队，发布结束后才改名；监听注册选项断言 `global: true`。
+- [x] 活体验证：在运行中的 Host 内对当前会话模拟 `entry.appending = true` 后触发监听，调用返回时标题保持原样，微任务后生成新 `session/title` 且标题变为 `TODO G：PLAN-configurable-spec-paths.md`。
+- [ ] 待用户重启 `dsh-web.service` 后加载正式补丁，并在新会话确认标题自动变为 `TODO：...`；当前运行进程中的监听器仍是旧代码，已做临时运行时包装验证。
 
 ## 2026-11-18 最新：`/ok` 只清除 TODO，不归档会话
 
