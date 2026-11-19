@@ -1,12 +1,21 @@
 # STATUS — DSH 工作台
 
-- 更新时间：2026-11-19（TODO 标题改名 append 重入修复）
+- 更新时间：2026-11-19（TODO 漏标记兜底识别）
 - 一句话：DSH 单 Host 下的统一工作台。面板覆盖工作区、仓库、文档、工单和 SA 控制；
   SA 控制直接切到 `dsh-superagent` 原生 main 面板，60 天保留与清理仍有 dry-run 和逐项安全检查。
 - 位置：`dsh-workbench/`；包名 `dsh-workbench@0.2.1`。
 - 计划：[`PLAN-dsh-workbench.md`](PLAN-dsh-workbench.md)、[`PLAN-sa-ui-migration.md`](PLAN-sa-ui-migration.md)。
 
-## 2026-11-19 最新：TODO 标题改名 append 重入修复
+## 2026-11-19 最新：模型漏输出标记时按「需要你执行」小节兜底
+
+- [x] 定位真实会话 `session-8a3a4002-...` 未加 TODO 的直接原因：82 条 assistant 消息中 0 条含末尾 `U+2063` 标记，3 条含标记的消息全是 runtime context 注入，监听器因此从未触发；提示词在压缩后已重新注入，属模型漏输出，不是插件失效（同一进程 21:26 的另一会话标题正常变成 `TODO G：…`）。
+- [x] 近 3 天会话扫描：含「需要你执行」的 assistant 消息 7 条，带标记仅 3 条；小节里有实际条目的 5 条中 3 条漏标，确认不是个例。
+- [x] `lib/todo.js` 新增 `hasUserActionSection()`：只看最后一段「需要你执行」小节（Markdown 标题、加粗行或独占一行的标签），小节内有代码块或列表条目才算用户动作；只写「无」、纯说明文字、代码块内引用都不算。
+- [x] `index.js` 监听器改为「末尾标记 或 实质小节」触发，改名路径不变；提示词补一句「出现非空『需要你执行』小节时同样必须输出标记」。
+- [x] 测试：`test-workbench-todo.mjs` 补 10 条小节识别断言，`test-workbench-index.mjs` 补兜底改名、只写「无」与 subagent 不兜底；用真实会话 seq 756 原文离线校验 `hasUserActionSection=true`。
+- [ ] 待用户重启 `dsh-web.service` 后，在新会话确认漏标记时标题仍能变成 `TODO：...`，并回归 `/ok` 清除。
+
+## 2026-11-19 上一轮：TODO 标题改名 append 重入修复
 
 - [x] 定位真实会话 `session-8f119a3c-...` 标题长期不变的直接根因：监听器确实被调用，但 `Session.commit()` 发布 `assistant/message` 期间 `entry.appending === true`；监听器同步调用 `sessionTitle.rename()` → `session.append("session/title")` 被会话层以 `session append cannot reenter while another append is being published` 拒绝，异常被 catch 后只留下不可见日志。
 - [x] `index.js` 新增 `scheduleAssistantMessage()`：事件监听只把改名排入微任务，等 `commit()` 的 `finally` 释放 `appending` 后再执行；监听器同时加 `{ global: true }`，不依赖会话作用域过滤。

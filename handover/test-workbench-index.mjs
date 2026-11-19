@@ -267,6 +267,26 @@ test('D/G 命令会话的 TODO 前缀保留命令标识', async () => {
   }
 })
 
+test('模型漏输出标记但收尾含实质「需要你执行」小节时兜底改名', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'dsh-workbench-index-'))
+  try {
+    const { ctx, session, calls } = fixture({ id: 'section-fallback' })
+    const config = { titleFile: join(dir, 'titles.json') }
+    assert.equal(await onAssistantMessage(ctx, config, session, message('## 需要你执行\n\n1. 重启 dsh-web\n\n```bash\nsystemctl --user restart dsh-web.service\n```')), true)
+    assert.deepEqual(calls, ['TODO：修复登录'])
+
+    // 只写「无」不兜底；subagent 会话不兜底。
+    const idle = fixture({ id: 'section-none' })
+    assert.equal(await onAssistantMessage(idle.ctx, config, idle.session, message('## 需要你执行\n\n无')), false)
+    assert.deepEqual(idle.calls, [])
+    const sub = fixture({ id: 'section-sub', delegationDepth: 1 })
+    assert.equal(await onAssistantMessage(sub.ctx, config, sub.session, message('## 需要你执行\n\n1. 重启 dsh-web')), false)
+    assert.deepEqual(sub.calls, [])
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
 test('/ok 只清除 TODO 前缀，不归档会话', async () => {
   const source = await readFile(new URL('../client.js', import.meta.url), 'utf8')
   assert.ok(source.includes("text: t(hadTodo ? 'okCleared' : 'okNoTodo')"))

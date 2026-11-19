@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { hasTodoPrefix, hasUserActionMarker, isSubagentMeta, stripTodoPrefix, USER_ACTION_MARKER, withTodoPrefix } from '../lib/todo.js'
+import { hasTodoPrefix, hasUserActionMarker, hasUserActionSection, isSubagentMeta, stripTodoPrefix, USER_ACTION_MARKER, withTodoPrefix } from '../lib/todo.js'
 
 assert.equal(hasUserActionMarker(`请确认\n${USER_ACTION_MARKER}`), true)
 assert.equal(hasUserActionMarker('请确认\n\u2063'), true)
@@ -29,4 +29,17 @@ assert.equal(stripTodoPrefix('TODO: 修复登录'), '修复登录')
 assert.equal(stripTodoPrefix('TODO D: 修复登录'), 'D: 修复登录')
 assert.equal(stripTodoPrefix('TODO G：修复登录'), 'G：修复登录')
 assert.equal(stripTodoPrefix('修复登录'), '修复登录')
+
+// 兜底：模型漏输出标记时，用收尾「需要你执行」小节识别用户动作。
+assert.equal(hasUserActionSection('## 需要你执行\n\n1. 重启服务\n2. 硬刷新'), true)
+assert.equal(hasUserActionSection('**需要你执行**\n\n```bash\nsystemctl --user restart dsh-web.service\n```'), true)
+assert.equal(hasUserActionSection('需要你执行：\n\n- 确认是否合并'), true)
+assert.equal(hasUserActionSection('## 需要你执行\n\n无'), false)
+assert.equal(hasUserActionSection('## 需要你执行\n\n无（本轮无需你操作）'), false)
+assert.equal(hasUserActionSection('## 需要你执行\n\n请在终端确认后告诉我。'), false)
+assert.equal(hasUserActionSection('正文提到需要你执行，但没有小节'), false)
+assert.equal(hasUserActionSection('```markdown\n## 需要你执行\n\n1. 示例\n```'), false)
+assert.equal(hasUserActionSection('## 需要你执行\n\n1. 旧动作\n\n## 需要你执行\n\n无'), false)
+assert.equal(hasUserActionSection('## 需要你执行\n\n1. 重启\n\n## 下一步\n\n- 看日志'), true)
+
 console.log('test-workbench-todo: ok')

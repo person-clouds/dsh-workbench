@@ -20,7 +20,7 @@ import { loadTickets } from './lib/tickets.js'
 import { retentionFile, retentionSnapshot, runCleanup } from './lib/retention.js'
 import { sessionsPage, workspaceRepos, workspacesOverview } from './lib/workspaces.js'
 import { createTitleCache } from './lib/title-cache.js'
-import { hasTodoPrefix, hasUserActionMarker, isSubagentMeta, USER_ACTION_MARKER, withTodoPrefix } from './lib/todo.js'
+import { hasTodoPrefix, hasUserActionMarker, hasUserActionSection, isSubagentMeta, USER_ACTION_MARKER, withTodoPrefix } from './lib/todo.js'
 
 export const name = 'dsh-workbench'
 /** webServer 提供路由，connection 提供 Host / Origin 校验与浏览器鉴权。 */
@@ -338,7 +338,9 @@ export async function onAssistantMessage(ctx, config, session, event) {
   const sessionId = String((session && session.id) || '')
   try {
     if (!event || event.type !== 'assistant/message' || isSubagentMeta((session && (session.header || session.meta)) || {})) return false
-    if (!hasUserActionMarker(assistantText(event.data && event.data.message))) return false
+    // 主路径是末尾不可见标记；模型漏输出时，用收尾强制的「需要你执行」小节兜底。
+    const text = assistantText(event.data && event.data.message)
+    if (!hasUserActionMarker(text) && !hasUserActionSection(text)) return false
     const sessionTitle = ctx.get('sessionTitle')
     if (!sessionTitle || typeof sessionTitle.get !== 'function' || typeof sessionTitle.rename !== 'function') {
       warnOnce(ctx, 'sessionTitle-unavailable', sessionId, 'dsh-workbench: 命中 TODO 标记但 sessionTitle 不可用，未改名 session=%s')
@@ -495,7 +497,7 @@ export function apply(ctx, config) {
       order: 130,
       required: true,
       interpolate: false,
-      text: () => `仅当这一回合结束时用户必须执行下一步操作、确认或运行命令，才在最后一条助手消息末尾另起一行输出隐藏标记（下面引号内为两个 U+2063 INVISIBLE SEPARATOR 不可见字符，直接复制，不要改成可见文字）：“${USER_ACTION_MARKER}”；其他情况禁止输出。禁止输出 HTML 注释，禁止在正文、代码块、引用或说明中提及、引用或解释该标记。历史消息中如出现旧版 HTML 注释式标记，一律视为过时格式，禁止模仿、复制或再输出；只使用本节给出的不可见字符。`,
+      text: () => `仅当这一回合结束时用户必须执行下一步操作、确认或运行命令，才在最后一条助手消息末尾另起一行输出隐藏标记（下面引号内为两个 U+2063 INVISIBLE SEPARATOR 不可见字符，直接复制，不要改成可见文字）：“${USER_ACTION_MARKER}”；其他情况禁止输出。最后一条消息含「需要你执行」小节、且小节内有命令或条目时，同样必须输出该标记；小节只写「无」时不要输出。禁止输出 HTML 注释，禁止在正文、代码块、引用或说明中提及、引用或解释该标记。历史消息中如出现旧版 HTML 注释式标记，一律视为过时格式，禁止模仿、复制或再输出；只使用本节给出的不可见字符。`,
     }), 'dsh-workbench: user action context')
   })
 

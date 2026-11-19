@@ -9,7 +9,7 @@ status: current
 
 ## 一、一句话结论
 
-- **出现**：助手判断这一轮结束后需要你做下一步操作，就在消息末尾输出两个不可见 `U+2063` 标记；插件检测到标记后把当前会话标题改成 `TODO：<原标题>`。
+- **出现**：助手判断这一轮结束后需要你做下一步操作，就在消息末尾输出两个不可见 `U+2063` 标记；插件检测到标记后把当前会话标题改成 `TODO：<原标题>`。模型偶尔漏输出标记时，插件还会识别收尾的实质「需要你执行」小节兜底。
 - **消失**：在会话输入框发送 `/ok`。它只清除标题前缀，不发送消息、不生成模型回合、也不归档会话。
 - **不会自动消失**：后续普通消息不会自动去掉已存在的 `TODO` 前缀；必须 `/ok` 或手动重命名。
 
@@ -25,13 +25,15 @@ status: current
 
 只有“需要用户动作”的回合才应输出；普通问答、纯信息回复不应输出。
 
+**漏标记兜底**：标记是隐形字符，长回合收尾时模型会漏。插件因此再看最后一段「需要你执行」小节——小节内有代码块或列表条目才算用户动作；只写「无」、纯说明文字不算；代码块里引用的模板不算。
+
 ### 2. 插件监听助手消息
 
 [index.js](/home/zh/www/dsh-workbench/index.js) 在 `sessionTitle` 服务就绪后注册全局 `session/event` 监听：
 
 1. 只处理 `assistant/message`；
 2. 跳过 subagent 会话（`origin === 'subagent'`、有 `parentSession` 或 `delegationDepth > 0`）；
-3. 检查助手文本末尾是否有隐藏标记（兼容旧 HTML 注释标记，但新消息不再使用）；
+3. 检查助手文本末尾是否有隐藏标记（兼容旧 HTML 注释标记，但新消息不再使用）；没有标记时，再看是否含实质「需要你执行」小节（有代码块或列表条目，只写「无」不算）；
 4. 读取当前会话标题，调用 `withTodoPrefix()` 加前缀；
 5. 等消息 append 发布结束后，再调用 `sessionTitle.rename()` 写入新的 `session/title` 事件，并更新 Workbench 标题缓存。
 
@@ -45,13 +47,15 @@ status: current
 
 ## 三、为什么以前一直没出现
 
-不是单一原因，排查中确认过三层问题：
+不是单一原因，排查中确认过四层问题：
 
 1. **监听器没有挂载**：早期在 `apply()` 里一次性 `ctx.get('sessionTitle')`，服务晚到时拿不到就永久跳过。已改为 `ctx.inject(['sessionTitle'], ...)`，服务就绪后自动挂载。
 2. **minimal 预设丢失提示词**：普通 `systemPrompt.section()` 会被 `complete: true` 的 persona 替换，模型收不到标记指令。已改为 `required: true` 的 runtime context。
 3. **改名被会话层拒绝**：`Session.commit()` 发布 `assistant/message` 时仍持有 `entry.appending = true`，监听器同步调用 `sessionTitle.rename()` 会触发 append 重入保护并抛错。已改为 `scheduleAssistantMessage()` 用微任务推迟到发布结束后执行。
 
-排查细节见 [PLAN-todo-title-listener-fix.md](/home/zh/www/dsh-workbench/PLAN-todo-title-listener-fix.md)。
+4. **模型漏输出标记**：标记是不可见字符，收尾动作多的回合容易被漏掉，插件只认字面标记时漏一次就没有 TODO（真实会话 `session-8a3a4002` 82 条助手消息 0 条带标记）。已增加「需要你执行」小节兜底与提示词约束。
+
+排查细节见 [PLAN-todo-title-listener-fix.md](/home/zh/www/dsh-workbench/PLAN-todo-title-listener-fix.md)、[PLAN-todo-marker-fallback.md](/home/zh/www/dsh-workbench/PLAN-todo-marker-fallback.md)。
 
 ## 四、消失机制
 
