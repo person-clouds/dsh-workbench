@@ -211,6 +211,8 @@ systemctl --user restart dsh-web.service
 
 ## 七、实施进展
 
+- 2026-11-19：新增面向使用者的 [`TODO-MECHANISM.md`](TODO-MECHANISM.md)，记录 TODO 出现/消失机制与 `/ok` 用法。
+
 - 2026-11-19：定位到监听器之外的第二层根因——`Session.commit()` 在发布 `session/event` 时持有 `entry.appending = true`，监听器内同步调用 `sessionTitle.rename()` 会触发 `session.append()` 重入保护并抛错。已新增 `scheduleAssistantMessage()` 用微任务推迟到发布结束后执行，监听器加 `{ global: true }`；补充「发布期间只排队」回归测试，并在活体 Host 中模拟 `entry.appending` 验证通过。
 
 - 2026-11-18：第三节代码与测试已完成并本地验证通过（`node --check`、四个 `handover` 测试、`npm pack --dry-run`）。

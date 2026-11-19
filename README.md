@@ -172,3 +172,4 @@ dsh-workbench/
 - 普通标题变为 `TODO：<原标题>`；`/D` 会话标题为 `D: <摘要>`，加上后为 `TODO D: <摘要>`；`/G` 会话标题为 `G：<标题>`，加上后为 `TODO G：<标题>`。改名会等消息 append 发布结束后执行，避免会话层重入保护拒绝写入。
 - 在会话输入框发送 `/ok`：只清除标题前缀，不归档会话；归档仅由用户在会话列表手动操作。不发送消息、不生成模型回合。
 - 只读辅助接口：`GET /dsh-workbench/api?action=todoState&sessionId=<id>` 返回当前 `title` 与 `hasTodo`；会话不存在返回 404。
+- 完整机制（出现、原因、消失与 `/ok` 用法）见 [`TODO-MECHANISM.md`](TODO-MECHANISM.md)。
