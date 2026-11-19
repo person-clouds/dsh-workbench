@@ -14,6 +14,7 @@
 - [x] 活体验证：在运行中的 Host 内对当前会话模拟 `entry.appending = true` 后触发监听，调用返回时标题保持原样，微任务后生成新 `session/title` 且标题变为 `TODO G：PLAN-configurable-spec-paths.md`。
 - [ ] 待用户重启 `dsh-web.service` 后加载正式补丁，并在新会话确认标题自动变为 `TODO：...`；当前运行进程中的监听器仍是旧代码，已做临时运行时包装验证。
 - [x] 新增 [`TODO-MECHANISM.md`](TODO-MECHANISM.md)：说明 TODO 的出现机制、历史失效原因、`/ok` 消失机制与自查方法；README 已加入口。
+- [x] 修复 `/ok` 读错标题源：`SessionSnapshot` 不包含 `title`，导致总是误报“没有 TODO”；改为读取 `projections.faceOf('title')`，并检查 `rename()` 的 `ok` 结果，新增真实提交路径回归测试。
 
 ## 2026-11-18 最新：`/ok` 只清除 TODO，不归档会话
 

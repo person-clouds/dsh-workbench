@@ -2322,11 +2322,16 @@ window.__ModuleLoader__.load({
               let hadTodo = false
               try {
                 await sessions.using(session.sessionId, { source: 'dsh-workbench-ok' }, async reference => {
-                  const snapshot = reference.binding.session.getSnapshot()
-                  const title = String(snapshot && snapshot.title || '')
+                  const bindingSession = reference.binding.session
+                  // 标题是 session 的 projection，不在 SessionSnapshot 上；旧实现读
+                  // getSnapshot().title 永远得到空串，导致 /ok 总是误报“没有 TODO”。
+                  const title = String(bindingSession.projections.faceOf('title').getSnapshot() ?? '')
                   const next = stripTodoPrefix(title)
                   hadTodo = next !== title
-                  if (hadTodo) await reference.binding.session.rename(next)
+                  if (hadTodo) {
+                    const renamed = await bindingSession.rename(next)
+                    if (!renamed.ok) throw new Error(renamed.error && renamed.error.message || '重命名会话失败')
+                  }
                 })
               } catch (error) {
                 return { kind: 'error', text: `${t('okFailed')}${error && error.message ? error.message : error}` }

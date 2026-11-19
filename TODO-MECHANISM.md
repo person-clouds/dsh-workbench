@@ -59,11 +59,12 @@ status: current
 
 在会话输入框输入 `/ok` 并回车，或从斜杠命令列表选择 `/ok`：
 
-- 读取当前标题；
+- 从会话的 `title` projection 读取当前标题（不是 `SessionSnapshot.title`）；
 - 若以 `TODO` 开头，只删掉开头一个 `TODO` 前缀；
 - 不发送消息、不生成模型回合、不归档会话；
 - 成功提示：“已清除 TODO，不归档会话”；
-- 没有 TODO 时提示：“当前没有 TODO 标记，不归档会话”。
+- 没有 TODO 时提示：“当前没有 TODO 标记，不归档会话”；
+- 重命名失败时会提示“操作失败”，不会假装清除成功。
 
 实现位置：[dsh-workbench/client.js](/home/zh/www/dsh-workbench/client.js) 的 `dsh-workbench-todo` 输入触发器。归档仍只能在会话列表手动操作。
 

@@ -275,6 +275,66 @@ test('/ok 只清除 TODO 前缀，不归档会话', async () => {
   assert.ok(!source.includes('/api/archive'))
 })
 
+/** 从浏览器端 client.js 取出注册的 input trigger source，并跑通 /ok 的真实提交路径。 */
+async function loadOkSource() {
+  const source = await readFile(new URL('../client.js', import.meta.url), 'utf8')
+  let registration
+  const window = { __ModuleLoader__: { load: value => { registration = value } } }
+  new Function('window', source)(window)
+  const module = registration.factory(() => ({ createElement: () => null }))
+
+  let title = 'TODO D: 修复登录'
+  const calls = []
+  const bindingSession = {
+    projections: { faceOf: key => ({ getSnapshot: () => key === 'title' ? title : undefined }) },
+    rename: async next => {
+      calls.push(next)
+      title = next
+      return { ok: true, value: { title: next, seq: 2 } }
+    },
+  }
+  const sessions = {
+    using: async (sessionId, options, operation) => {
+      assert.equal(sessionId, 's1')
+      assert.deepEqual(options, { source: 'dsh-workbench-ok' })
+      return operation({ binding: { session: bindingSession } })
+    },
+  }
+  let okSource
+  const ctx = {
+    locale: {
+      register: () => () => {},
+      bind: () => key => key,
+    },
+    get: name => name === 'sessions' ? sessions : name === 'inputTriggers' ? inputTriggers : undefined,
+    effect: fn => { const dispose = fn(); return typeof dispose === 'function' ? dispose : () => {} },
+    slots: { inject: () => {}, register: () => () => {} },
+  }
+  const inputTriggers = {
+    registerSource: source => { okSource = source; return () => {} },
+  }
+  module.apply(ctx)
+  assert.ok(okSource)
+  return { okSource, calls, title: () => title, bindingSession }
+}
+
+test('/ok 从 title projection 读取标题并校验 rename 结果', async () => {
+  const { okSource, calls } = await loadOkSource()
+  const outcome = await okSource.matchEnter({ sessionId: 's1' }, '/ok')
+  assert.ok(outcome && outcome.claim)
+  const result = await outcome.claim.submit('', {}, [])
+  assert.deepEqual(calls, ['D: 修复登录'])
+  assert.equal(result.kind, 'success')
+  assert.equal(result.text, 'okCleared')
+
+  const refused = await loadOkSource()
+  refused.bindingSession.rename = async () => ({ ok: false, error: { message: 'rename refused' } })
+  const refusedOutcome = await refused.okSource.matchEnter({ sessionId: 's1' }, '/ok')
+  const refusedResult = await refusedOutcome.claim.submit('', {}, [])
+  assert.equal(refusedResult.kind, 'error')
+  assert.match(refusedResult.text, /rename refused/)
+})
+
 test('todoState 返回当前标题与 TODO 状态', () => {
   const { ctx } = fixture({ title: 'TODO：修复登录' })
   assert.deepEqual(todoStateOf(ctx, 's1'), {
