@@ -4,7 +4,7 @@
 - 一句话：DSH 单 Host 下的统一工作台。面板覆盖工作区、仓库、文档、工单和 SA 控制；
   SA 控制直接切到 `dsh-superagent` 原生 main 面板，60 天保留与清理仍有 dry-run 和逐项安全检查。
 - 位置：`dsh-workbench/`；包名 `dsh-workbench@0.2.1`。
-- 计划：[`PLAN-dsh-workbench.md`](PLAN-dsh-workbench.md)、[`PLAN-sa-ui-migration.md`](PLAN-sa-ui-migration.md)。
+- 计划：[`plans/PLAN-dsh-workbench.md`](plans/PLAN-dsh-workbench.md)、[`plans/PLAN-sa-ui-migration.md`](plans/PLAN-sa-ui-migration.md)。
 
 ## 2026-11-19 最新：模型漏输出标记时按「需要你执行」小节兜底
 
@@ -27,7 +27,7 @@
 
 ## 2026-11-18 最新：`/ok` 只清除 TODO，不归档会话
 
-- [x] 按 [`PLAN-ok-no-auto-archive-prompts.md`](/home/zh/www/personalCloud/task/dsh-workflow-shortcuts/PLAN-ok-no-auto-archive-prompts.md) 调整：Web 输入框 `/ok` 只移除标题 TODO 前缀，不再延迟调用归档接口；手动归档入口不变。
+- [x] 按 [`PLAN-ok-no-auto-archive-prompts.md`](/home/zh/www/personalCloud/plans/archive/PLAN-dsh-workflow-shortcuts-no-auto-archive.md) 调整：Web 输入框 `/ok` 只移除标题 TODO 前缀，不再延迟调用归档接口；手动归档入口不变。
 - [x] `/ok` 命令结果改为「已清除 TODO，不归档会话」/「当前没有 TODO 标记，不归档会话」，中英文词典同步。
 - [x] 新增源码级回归断言，确认 `/ok` 处理路径不包含 `ARCHIVE_DELAY_MS` 与 `/api/archive`。
 - [x] 校验：`node --check client.js`；`node --test handover/test-workbench-*.mjs`。
@@ -47,7 +47,7 @@
 
 ## 2026-11-18 上一轮：TODO 标题监听时序修复
 
-- [x] 线上证据显示标题未改名的根因是监听器没挂载：`apply()` 里一次性 `ctx.get('sessionTitle')` 时服务尚未就绪，拿不到就永久跳过，且无日志。修复见 [`PLAN-todo-title-listener-fix.md`](PLAN-todo-title-listener-fix.md)。
+- [x] 线上证据显示标题未改名的根因是监听器没挂载：`apply()` 里一次性 `ctx.get('sessionTitle')` 时服务尚未就绪，拿不到就永久跳过，且无日志。修复见 [`plans/PLAN-todo-title-listener-fix.md`](plans/PLAN-todo-title-listener-fix.md)。
 - [x] `index.js` 改为 `ctx.inject(['sessionTitle'], ...)` 延迟挂载 `session/event` 监听，挂载成功打 `info`「sessionTitle 就绪，TODO 标题监听已挂载」；`systemPrompt` section 同样改用 `ctx.inject`，避免同类时序隐患。
 - [x] 诊断日志：命中标记但 `sessionTitle` 不可用、当前标题为空时按会话去重 `warn` 一次并带会话 id；`rename` 失败日志补会话 id；未命中标记不打日志。
 - [x] 提示词补「历史消息中旧版 HTML 注释式标记视为过时格式，禁止模仿、复制或再输出」，且不复述完整旧标记文本。
@@ -121,7 +121,7 @@
       `ctx.layout.selectPanel('dsh-superagent')` 打开 `dsh-superagent` 已注册的 `main` 面板。
       复用完整原生前端（概览/来源/触发/评估/执行/设置/提示词），不复制 bundle、不维护第二套 CSS。
 - [x] 浏览器端插件 `inject` 增加 `layout`；仅在布局接口不可用时回退旧 `LegacySaView`。
-- [x] 新增 [`PLAN-sa-ui-migration.md`](PLAN-sa-ui-migration.md)：列出保留清理、原始 JSON、
+- [x] 新增 [`plans/PLAN-sa-ui-migration.md`](plans/PLAN-sa-ui-migration.md)：列出保留清理、原始 JSON、
       工单快照/diff/报告等工作台独有能力，明确「待做待迁、本轮不实现」。
 - [x] 校验：`node --check index.js/client.js`、`vm.Script` 解析 + client 双加载 + factory 执行、
       `node --test handover/test-workbench-repos.mjs`、`npm pack --dry-run`（v0.2.1，18 文件）通过。

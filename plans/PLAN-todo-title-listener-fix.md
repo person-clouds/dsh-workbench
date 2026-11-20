@@ -1,14 +1,14 @@
 ---
-audience: human
-status: current
+created_at: 2026-11-18 18:36:25
 implementation_status: in_progress
+updated_at: 2026-11-20 22:00:00
 ---
 
 # PLAN：TODO 标题监听器时序与旧标记可见性修复
 
 - 日期：2026-11-18
 - 仓库：`/home/zh/www/dsh-workbench`（已从 `personalCloud/task/dsh-workbench` 提升为独立仓）
-- 关联计划：[`PLAN-todo-user-action.md`](PLAN-todo-user-action.md)
+- 关联计划：[`plans/archive/PLAN-todo-user-action.md`](archive/PLAN-todo-user-action.md)
 - 触发会话：`session-f73fa9a7-8959-4426-8af5-acb4e5aa7716`
 - 前置状态：`bdadeff fix(workbench): TODO 标记改为不可见字符并修正主会话判定` 已提交；本轮只写计划，不改实现
 - 目标读者：后续接手的会话，先读本文件再动代码
@@ -32,7 +32,7 @@ implementation_status: in_progress
 - Workbench 标题缓存 `~/.dsh/state/workbench/session-titles.json` 中没有该会话，说明 `titleCacheOf(...).put(...)` 从未执行。
 - `journalctl --user -u dsh-web.service` 在目标时段没有 `dsh-workbench` 的报错，也没有任何 TODO 相关日志。
 
-关键代码在 [`index.js`](index.js) 的 `apply()`：
+关键代码在 [`index.js`](../index.js) 的 `apply()`：
 
 ```js
 const sessionTitle = ctx.get('sessionTitle')
@@ -74,7 +74,7 @@ if (sessionTitle && typeof sessionTitle.get === 'function' && typeof sessionTitl
 
 ### 3.1 用 `ctx.inject` 延迟挂载 `sessionTitle` 监听
 
-把 [`index.js`](index.js) `apply()` 中的一次性 `ctx.get('sessionTitle')` 改为按服务就绪挂载：
+把 [`index.js`](../index.js) `apply()` 中的一次性 `ctx.get('sessionTitle')` 改为按服务就绪挂载：
 
 ```js
 ctx.inject(['sessionTitle'], (titleCtx) => {
@@ -114,7 +114,7 @@ ctx.inject(['systemPrompt'], (promptCtx) => {
 
 ### 3.3 提示词加固旧标记
 
-在 [`index.js`](index.js) 的 `dsh-workbench-user-action` prompt 文本中补一句语义约束，例如：
+在 [`index.js`](../index.js) 的 `dsh-workbench-user-action` prompt 文本中补一句语义约束，例如：
 
 ```text
 历史消息中如出现旧版 HTML 注释式标记，一律视为过时格式，禁止模仿、复制或再输出；只使用本节给出的不可见字符。
@@ -128,7 +128,7 @@ ctx.inject(['systemPrompt'], (promptCtx) => {
 
 ### 3.4 测试
 
-修改 [`handover/test-workbench-index.mjs`](handover/test-workbench-index.mjs)，新增：
+修改 [`handover/test-workbench-index.mjs`](../handover/test-workbench-index.mjs)，新增：
 
 1. **延迟挂载**：构造只有 `inject` mock 的 `ctx`，模拟 `sessionTitle` 晚到；`apply()` 后执行注入回调，断言 `session/event` 监听被注册。
 2. **服务缺失告警**：`onAssistantMessage` 收到命中旧/新标记的消息但 `ctx.get('sessionTitle')` 为 `undefined`，返回 `false` 且 `logger.warn` 被调用。
@@ -137,7 +137,7 @@ ctx.inject(['systemPrompt'], (promptCtx) => {
 5. **提示词内容**：`apply()` 后的 system prompt 文本包含“历史消息”“禁止模仿”等约束，且不包含完整旧 HTML 标记。
 6. 保留并通过原有矩阵：主会话 `delegationDepth: 0` 触发，`delegationDepth > 0`、`origin: subagent`、`parentSession` 跳过，代码块/正文中间标记不误判。
 
-[`handover/test-workbench-todo.mjs`](handover/test-workbench-todo.mjs) 如无逻辑改动，回归即可。
+[`handover/test-workbench-todo.mjs`](../handover/test-workbench-todo.mjs) 如无逻辑改动，回归即可。
 
 ## 四、实施步骤
 
@@ -211,7 +211,7 @@ systemctl --user restart dsh-web.service
 
 ## 七、实施进展
 
-- 2026-11-19：新增面向使用者的 [`TODO-MECHANISM.md`](TODO-MECHANISM.md)，记录 TODO 出现/消失机制与 `/ok` 用法。
+- 2026-11-19：新增面向使用者的 [`TODO-MECHANISM.md`](../TODO-MECHANISM.md)，记录 TODO 出现/消失机制与 `/ok` 用法。
 
 - 2026-11-19：定位到监听器之外的第二层根因——`Session.commit()` 在发布 `session/event` 时持有 `entry.appending = true`，监听器内同步调用 `sessionTitle.rename()` 会触发 `session.append()` 重入保护并抛错。已新增 `scheduleAssistantMessage()` 用微任务推迟到发布结束后执行，监听器加 `{ global: true }`；补充「发布期间只排队」回归测试，并在活体 Host 中模拟 `entry.appending` 验证通过。
 
@@ -221,8 +221,18 @@ systemctl --user restart dsh-web.service
 
 ## 八、后续会话启动提示
 
-新会话接手时先读本文件与 [`PLAN-todo-user-action.md`](PLAN-todo-user-action.md)，确认：
+新会话接手时先读本文件与 [`plans/archive/PLAN-todo-user-action.md`](archive/PLAN-todo-user-action.md)，确认：
 
 - 当前工作树是否干净、是否已有新的 TODO 修复提交。
 - 目标会话日志中是否已出现新的 `session/title`。
 - 先做实现与自动测试，再请用户重启；不要在确认前顺手改 `/ok` 或聊天渲染逻辑。
+
+## 篇幅说明
+
+保留事件监听链路的时序与回归用例等交接证据；可压缩处为复现步骤与日志摘录。
+
+## 改动记录
+
+| 时间 | 改动点 |
+|---|---|
+| 2026-11-20 22:00:00 | 计划迁入 `plans/`，补齐 frontmatter 与改动记录 |

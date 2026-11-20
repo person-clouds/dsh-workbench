@@ -25,7 +25,7 @@ Sidebar icon (id `dsh-workbench`, label “DSH 工作台”) → `main` slot:
 | Repos | SA delivery repo + DSH workspace paths + `<stateDir>/work/*` ticket subprojects; auto-detects git; server-paged repo cards and directory tree, file content, recent commits, dirty count; the repo list carries no sessions and the repo detail pages that repo's sessions separately (10/page by default) |
 | Docs | Lists repos first, then loads that repo’s Markdown index on demand; folders are collapsed by default and expand level by level |
 | Tickets | Server-paged SA ticket list, active-only by default; details contain reports, diffs and ticket records; retry/stop directly; the list does not run git lookups for every ticket |
-| SA Control | Opens the genuine `dsh-superagent` main panel: Overview / Sources / Triggers / Eval / Execution / Settings & prompts. Workbench-only capabilities missing from the native page are listed in [`PLAN-sa-ui-migration.md`](PLAN-sa-ui-migration.md); not implemented in this round |
+| SA Control | Opens the genuine `dsh-superagent` main panel: Overview / Sources / Triggers / Eval / Execution / Settings & prompts. Workbench-only capabilities missing from the native page are listed in [`plans/PLAN-sa-ui-migration.md`](plans/PLAN-sa-ui-migration.md); not implemented in this round |
 
 ## Data sources
 
@@ -100,7 +100,7 @@ Edit under DSH Settings → Plugins → DSH Workbench, or write it into the prof
 Each `repos` item: `{ id, name, path, mode: git|worktree, ref, description, remote, exclude }`.
 Besides explicit `repos`, the repo list automatically includes the SA delivery repo pointed to by `repoDir`, all DSH `workspaceRegistry` workspaces, and SA ticket subprojects under `<stateDir>/work/*`. The same real path appears only once; `superagent-console/repos.json` is no longer read.
 
-> The unified sidebar entry is `dsh-workbench`. If the old `dsh-superagent` panel still occupies a sidebar icon, use [`handover/dsh-superagent-hide-legacy-sidebar.patch`](handover/dsh-superagent-hide-legacy-sidebar.patch) to remove the duplicate entry; its `main` panel remains registered, and SA Control reuses it through `ctx.layout.selectPanel("dsh-superagent")`. See [`PLAN-sa-ui-migration.md`](PLAN-sa-ui-migration.md).
+> The unified sidebar entry is `dsh-workbench`. If the old `dsh-superagent` panel still occupies a sidebar icon, use [`handover/dsh-superagent-hide-legacy-sidebar.patch`](handover/dsh-superagent-hide-legacy-sidebar.patch) to remove the duplicate entry; its `main` panel remains registered, and SA Control reuses it through `ctx.layout.selectPanel("dsh-superagent")`. See [`plans/PLAN-sa-ui-migration.md`](plans/PLAN-sa-ui-migration.md).
 
 ## 60-day retention and cleanup
 
@@ -136,7 +136,7 @@ dsh-workbench/
 ├── lib/retention.js      # 60-day retention, safety checks and cleanup ledger
 ├── lib/sa.js             # SA management API allowlist proxy
 ├── client.js             # browser side: sidebar icon + 5 tabs; SA Control opens native panel
-├── PLAN-sa-ui-migration.md # native SA compatibility and pending-migration backlog
+├── plans/PLAN-sa-ui-migration.md # native SA compatibility and pending-migration backlog
 ├── locale/zh.json        # Chinese copy
 ├── locale/en.json
 ├── market/person-clouds__dsh-workbench.yml

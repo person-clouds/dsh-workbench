@@ -23,7 +23,7 @@ status: current
 
 ## 非目标
 
-- 不实现 `dsh-superagent` 原生面板已有功能（进度见 `PLAN-sa-ui-migration.md`）；
+- 不实现 `dsh-superagent` 原生面板已有功能（进度见 `plans/PLAN-sa-ui-migration.md`）；
 - 不写 `orchestrator.sqlite`，不接管 SA 工单状态；
 - 不读取凭据与 `.env`，不渲染 `innerHTML`；
 - 不做第二套 SA 表单、不新增对外端口。

@@ -55,7 +55,7 @@ status: current
 
 4. **模型漏输出标记**：标记是不可见字符，收尾动作多的回合容易被漏掉，插件只认字面标记时漏一次就没有 TODO（真实会话 `session-8a3a4002` 82 条助手消息 0 条带标记）。已增加「需要你执行」小节兜底与提示词约束。
 
-排查细节见 [PLAN-todo-title-listener-fix.md](/home/zh/www/dsh-workbench/PLAN-todo-title-listener-fix.md)、[PLAN-todo-marker-fallback.md](/home/zh/www/dsh-workbench/PLAN-todo-marker-fallback.md)。
+排查细节见 [plans/PLAN-todo-title-listener-fix.md](/home/zh/www/dsh-workbench/plans/PLAN-todo-title-listener-fix.md)、[plans/archive/PLAN-todo-marker-fallback.md](/home/zh/www/dsh-workbench/plans/archive/PLAN-todo-marker-fallback.md)。
 
 ## 四、消失机制
 
@@ -104,4 +104,4 @@ status: current
 - [dsh-workbench/lib/todo.js](/home/zh/www/dsh-workbench/lib/todo.js)：标记与前缀工具
 - [dsh-workbench/client.js](/home/zh/www/dsh-workbench/client.js)：`/ok` 命令
 - [dsh-workbench/README.md](/home/zh/www/dsh-workbench/README.md)：使用说明
-- [dsh-workbench/PLAN-todo-title-listener-fix.md](/home/zh/www/dsh-workbench/PLAN-todo-title-listener-fix.md)：本次根因与修复计划
+- [dsh-workbench/plans/PLAN-todo-title-listener-fix.md](/home/zh/www/dsh-workbench/plans/PLAN-todo-title-listener-fix.md)：本次根因与修复计划

@@ -13,7 +13,7 @@ status: current
 2. [`SPEC.md`](SPEC.md)：目标、范围、接口、非目标与验收命令；
 3. [`README.md`](README.md)：面板结构、数据来源、安装与安全边界；
 4. [`STATUS.md`](STATUS.md)：当前实现状态与验收进度；
-5. 进行中的 `PLAN-*.md`。
+5. `plans/` 下进行中的 `PLAN-*.md`（已完成在 `plans/archive/`）。
 
 ## 1. 硬约束
 

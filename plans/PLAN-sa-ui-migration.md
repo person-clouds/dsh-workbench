@@ -1,9 +1,13 @@
-# SA 控制页迁移计划：原生 Superagent 前端 + 工作台独有功能清单
+---
+implementation_status: in_progress
+created_at: 2026-11-15 12:10:12
+updated_at: 2026-11-20 22:00:00
+---
 
-- 状态：原生页面切换已实施；工作台独有功能仅登记，**本轮不实现、不迁移**
+# SA 控制页迁移计划：原生 Superagent 前端 + 工作台独有功能清单
 - 日期：2026-11-15
 - 决策：SA 管理界面以 `dsh-superagent` 自带前端为唯一事实来源；工作台不再维护第二套较弱的管理表单
-- 关联：[`PLAN-dsh-workbench.md`](PLAN-dsh-workbench.md)、[`STATUS.md`](STATUS.md)
+- 关联：[`PLAN-dsh-workbench.md`](PLAN-dsh-workbench.md)、[`STATUS.md`](../STATUS.md)
 
 ## 1. 背景
 
@@ -89,3 +93,9 @@ dsh-workbench「SA 控制」
 - [x] 「SA 控制」按钮在有 `ctx.layout` 时调用 `selectPanel('dsh-superagent')`；
 - [x] 原生面板不可用时显示失败原因；
 - [x] 本文档列清待做待迁项，并明确本轮不实现。
+
+## 改动记录
+
+| 时间 | 改动点 |
+|---|---|
+| 2026-11-20 22:00:00 | 计划迁入 `plans/`，补齐 frontmatter 与改动记录 |

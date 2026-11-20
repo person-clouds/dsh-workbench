@@ -1,6 +1,10 @@
-# 计划：单 Host 合并 SA，并将 workbench 改名 dsh-workbench
+---
+implementation_status: in_progress
+created_at: 2026-11-14 22:26:18
+updated_at: 2026-11-20 22:00:00
+---
 
-- 状态：已实施（代码与文档完成；本机切换与运行态验证待执行）
+# PLAN：dsh-workbench 原生工作台改造
 - 日期：2026-11-14
 - 适用项目：`task/superagent-workbench/`、`dsh-superagent`、DSH `web` profile
 - 决策者：用户
@@ -8,37 +12,11 @@
 
 ## 1. 背景
 
-当前本机有两个长期运行的 DSH Host：
-
-- `dsh-web`：`web` profile，3080，Tailnet Serve `8443`，运行主 UI；
-- `dsh-superagent`：`superagent` profile，3082，仅回环，运行 SA。
-
-两者共用 `DSH_HOME=/home/zh/.dsh`，因此同时读写：
-
-- `~/.dsh/storages/workspace.json`；
-- `~/.dsh/sessions/`；
-- 其他按 DSH_HOME 定位的状态。
-
-`@deepseek-ai/dsh-storage-json` 是单文件、内存权威、无跨进程写锁的存储，两个 Host 会互相覆盖。已观察到：
-
-- 两边 workspace / session 列表不一致；
-- 同一 session 显示的工作目录不同；
-- 一边归档后另一边不归档。
-
-根因不是 superagent 的 bug，而是两个进程都把自己当成唯一写者。
-
-同时，当前 workbench 的定位也不对：
-
-- 名字是 `superagent-workbench`；
-- 默认复用 `task/superagent-console/repos.json`；
-- 会把并非 SA 创建的仓库显示出来；
-- README 把它描述成“官方 SA 面板的只读补充”，与后续统一 UI 的方向冲突。
+两个长期运行的 DSH Host 共用 `DSH_HOME=/home/zh/.dsh`：`dsh-web`（web profile，3080，Tailnet 8443）跑主 UI，`dsh-superagent`（superagent profile，3082，回环）跑 SA。`dsh-storage-json` 是单文件、内存权威、无跨进程写锁的存储，双方同时写 `workspace.json` 与 `sessions/` 会互相覆盖，已出现列表不一致、归档不同步；根因是都把自己当唯一写者。workbench 现名 `superagent-workbench`、复用 SA 的 `repos.json` 并展示非 SA 仓库，定位为“只读补充”，与统一 UI 冲突。
 
 ## 2. 术语
 
-- **SA**：superagent，即 `dsh-superagent` 整套系统。以后口头和文档统一使用这个简写。
-- **orchestrator**：SA 内部长期存在的一个 DSH 会话，负责语义判断、路由、回复和配置操作，不直接写业务代码。
-- **worker**：SA 为每个 ticket 创建的执行会话，命名 `worker-<ticketId>`，负责实际代码工作。
+- **SA**：`dsh-superagent` 整套系统；**orchestrator**：SA 内长期会话，管语义、路由、回复与配置；**worker**：每个 ticket 的执行会话 `worker-<ticketId>`。
 - **dsh-workbench**：DSH 统一工作台，负责展示与操作，不是 SA 专属面板。
 
 ## 3. 目标
@@ -74,8 +52,7 @@ dsh-web（唯一 DSH Host）
 - 不修改 DSH 核心的 workspace/session 语义；
 - 不用文件监听或 IPC 去合并两个 `workspace.json` 写者；
 - 不把 SA 的执行进程塞进主进程；
-- 不自动删除 session 日志；
-- 不在本次计划中直接执行迁移或重启。
+- 不自动删除 session 日志，不在本次计划中直接执行迁移或重启。
 
 ## 4. 单 Host 架构
 
@@ -388,19 +365,15 @@ ctx.webServer.host === '127.0.0.1'
 
 ## 11. 验收标准
 
-1. 只有一个 DSH Host 进程监听 Web；
-2. 8080/8443 入口与 DSH 登录态正常；
+1. 只有一个 DSH Host 进程监听 Web，8080/8443 入口与登录态正常；
 3. 不再有 3082 监听；
-4. 主 UI 能看到 SA 的 orchestrator 和 worker 会话；
-5. 主 UI 归档 SA 会话后，workbench 与 SA 状态一致；
+4. 主 UI 能看到 SA 的 orchestrator 和 worker 会话，归档后 workbench 与 SA 状态一致；
 6. 运行一个 ticket 全程只产生 1 个 worker 会话；
 7. 不再出现“生成图片/echo”类子会话；
 8. workbench 能管理工作区、仓库、文档、工单、SA 配置；
 9. SA 配置写操作只经过 SA management API；
-10. 归档 60 天后，符合条件的 worktree 和 workspace 被自动清理；
-11. 有未提交改动、打开 PR、pin 或未合并分支时不会清理；
-12. session 日志不会被自动删除；
-13. 文档、PROJECT_INDEX、回滚说明齐全。
+10. 归档 60 天后符合条件（无未提交改动、无打开 PR、未 pin、已合并）的 worktree 和 workspace 自动清理，session 日志不自动删除；
+11. 文档、PROJECT_INDEX、回滚说明齐全。
 
 ## 12. 风险与回滚
 
@@ -414,15 +387,12 @@ ctx.webServer.host === '127.0.0.1'
 | 插件升级破坏主 UI | `DSH_DISABLE_SUPERAGENT=1` 安全模式 |
 | 重启中断会话 | 实施前明确告知用户，选择低峰时段 |
 
-## 13. 已确认决策
+## 篇幅说明
 
-1. 采用方案 A：单 DSH Host，单写者，执行隔离；
-2. 统一 worktree 根目录 `~/src/dsh-worktrees/<repo>/<ticket>`；
-3. SA 会话模型：1 个 orchestrator + 每个 ticket 1 个 worker；
-4. 禁止 SA 随意创建小会话；
-5. dsh-workbench 重新定位为 DSH 工作台，并吸收 SA panel；
-6. 改名 `dsh-workbench`，不做旧版本兼容；
-7. 归档后保留 60 天，允许自动清理；
-8. session 日志不自动删除；
-9. 文档统一使用 SA 简写；
-10. 用户未明确说“开干”前，不实施运行时代码变更。
+保留背景、架构、改名清单与分阶段步骤等交接证据；可压缩处为 §1 背景与 §7 页面细节，需保留 §10 阶段步骤与 §8.4 写操作边界。
+
+## 改动记录
+
+| 时间 | 改动点 |
+|---|---|
+| 2026-11-20 22:00:00 | 计划迁入 `plans/`，补齐 frontmatter 与改动记录 |

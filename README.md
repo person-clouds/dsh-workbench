@@ -27,7 +27,7 @@ status: current
 | 仓库 | SA 交付仓库 + DSH 工作区路径 + `<stateDir>/work/*` 工单子项目，自动检测 git；仓库卡片每页 4 个并按更新时间（最新提交时间，非 git 目录取 mtime）倒序；仓库列表不附带会话，进入仓库后单独分页展示该仓库会话（默认 10 条/页），目录逐层加载也由服务端分页 |
 | 文档 | 仓库选择服务端分页；选择后按需读取该仓库的 Markdown 索引，目录默认收起，点击逐层展开 |
 | 工单 | SA 工单列表服务端分页，默认只查进行中；详情含报告、diff、工单记录；可直接重试/停止；列表不对全库逐条查 git |
-| SA 控制 | 一键切到 `dsh-superagent` 原生 main 面板：概览 / 来源 / 触发 / 评估 / 执行 / 设置与提示词。工作台独有但原生暂缺的能力只登记在 [`PLAN-sa-ui-migration.md`](PLAN-sa-ui-migration.md)，本轮不实现 |
+| SA 控制 | 一键切到 `dsh-superagent` 原生 main 面板：概览 / 来源 / 触发 / 评估 / 执行 / 设置与提示词。工作台独有但原生暂缺的能力只登记在 [`plans/PLAN-sa-ui-migration.md`](plans/PLAN-sa-ui-migration.md)，本轮不实现 |
 
 ## 数据来源
 
@@ -105,7 +105,7 @@ dsh plugin --profile web add dsh-workbench
 > 侧边栏统一入口是 `dsh-workbench`。若旧 `dsh-superagent` 面板仍占一个侧栏图标，
 > 用 [`handover/dsh-superagent-hide-legacy-sidebar.patch`](handover/dsh-superagent-hide-legacy-sidebar.patch)
 > 去掉重复入口；旧面板 `main` 深链保留，「SA 控制」正是通过 `ctx.layout.selectPanel("dsh-superagent")`
-> 复用它。迁移清单见 [`PLAN-sa-ui-migration.md`](PLAN-sa-ui-migration.md)。
+> 复用它。迁移清单见 [`plans/PLAN-sa-ui-migration.md`](plans/PLAN-sa-ui-migration.md)。
 
 ## 60 天保留与清理
 
@@ -145,7 +145,7 @@ dsh-workbench/
 ├── lib/retention.js      # 60 天保留、安全检查与清理台账
 ├── lib/sa.js             # SA 管理 API 白名单代理
 ├── client.js             # 浏览器侧：侧栏图标 + 5 个标签页；SA 控制切原生面板
-├── PLAN-sa-ui-migration.md # 原生 SA 页面兼容与「待做待迁」清单
+├── plans/PLAN-sa-ui-migration.md # 原生 SA 页面兼容与「待做待迁」清单
 ├── locale/zh.json        # 中文文案
 ├── locale/en.json
 ├── market/person-clouds__dsh-workbench.yml
